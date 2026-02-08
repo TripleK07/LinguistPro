@@ -7,6 +7,7 @@ import { AuthView } from './types';
 
 const App: React.FC = () => {
   const [session, setSession] = useState<any>(null);
+  const [isGuest, setIsGuest] = useState(false);
   const [loading, setLoading] = useState(true);
   const [currentView, setCurrentView] = useState<AuthView>('login');
 
@@ -30,6 +31,8 @@ const App: React.FC = () => {
       console.log(`Auth event: ${event}`);
       setSession(newSession);
       if (event === 'SIGNED_OUT') {
+        setSession(null);
+        setIsGuest(false);
         setCurrentView('login');
       }
     });
@@ -38,6 +41,15 @@ const App: React.FC = () => {
       subscription.unsubscribe();
     };
   }, []);
+
+  const handleTryAsGuest = () => {
+    setIsGuest(true);
+  };
+
+  const handleExitGuest = () => {
+    setIsGuest(false);
+    setCurrentView('login');
+  };
 
   if (loading) {
     return (
@@ -52,12 +64,17 @@ const App: React.FC = () => {
 
   return (
     <div className="min-h-screen">
-      {session ? (
-        <Dashboard session={session} />
+      {(session || isGuest) ? (
+        <Dashboard 
+          session={session} 
+          isGuest={isGuest} 
+          onExitGuest={handleExitGuest}
+        />
       ) : (
         <AuthScreen 
           view={currentView} 
           setView={setCurrentView} 
+          onTryAsGuest={handleTryAsGuest}
         />
       )}
     </div>

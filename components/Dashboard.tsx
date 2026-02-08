@@ -4,11 +4,10 @@ import { supabase } from '../lib/supabase';
 import { lookupWord, generateSpeech, decodeBase64, decodeAudioData, transcribeAudio, getQuizWord } from '../lib/gemini';
 import { DictionaryEntry, DashboardView, Favorite } from '../types';
 
-// The aistudio property is already defined globally as AIStudio.
-// Removing clashing manual declaration to fix type error.
-
 interface DashboardProps {
   session: any;
+  isGuest?: boolean;
+  onExitGuest?: () => void;
 }
 
 const LANGUAGES = [
@@ -24,7 +23,7 @@ const LANGUAGES = [
 
 const QUIZ_DURATION = 10; // 10 seconds
 
-const Dashboard: React.FC<DashboardProps> = ({ session }) => {
+const Dashboard: React.FC<DashboardProps> = ({ session, isGuest, onExitGuest }) => {
   const [signingOut, setSigningOut] = useState(false);
   const [currentTab, setCurrentTab] = useState<DashboardView>('search');
   
@@ -54,7 +53,7 @@ const Dashboard: React.FC<DashboardProps> = ({ session }) => {
   const [favoritesSearchQuery, setFavoritesSearchQuery] = useState('');
   const [selectedFavorite, setSelectedFavorite] = useState<Favorite | null>(null);
   
-  const user = session.user;
+  const user = session?.user || { id: 'guest', email: 'Guest User' };
   const audioContextRef = useRef<AudioContext | null>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
@@ -65,7 +64,9 @@ const Dashboard: React.FC<DashboardProps> = ({ session }) => {
   const currentQuizLanguage = LANGUAGES.find(l => l.code === quizTargetLang);
 
   useEffect(() => {
-    fetchFavorites();
+    if (!isGuest) {
+      fetchFavorites();
+    }
     return () => {
       stopRecording();
       if (timerIntervalRef.current) clearInterval(timerIntervalRef.current);
@@ -101,7 +102,6 @@ const Dashboard: React.FC<DashboardProps> = ({ session }) => {
 
   const handleSelectApiKey = async () => {
     try {
-      // Accessing aistudio from global scope as defined by the context
       await (window as any).aistudio.openSelectKey();
       setIsQuotaExceeded(false);
       setError(null);
@@ -112,6 +112,7 @@ const Dashboard: React.FC<DashboardProps> = ({ session }) => {
 
   // Quiz Logic
   const startNextQuizWord = async () => {
+    if (isGuest) return;
     setQuizStatus('loading');
     setQuizInput('');
     setQuizTimer(QUIZ_DURATION);
@@ -164,6 +165,10 @@ const Dashboard: React.FC<DashboardProps> = ({ session }) => {
   }, [favorites, favoritesSearchQuery]);
 
   const handleSignOut = async () => {
+    if (isGuest) {
+      onExitGuest?.();
+      return;
+    }
     setSigningOut(true);
     await supabase.auth.signOut();
   };
@@ -314,6 +319,10 @@ const Dashboard: React.FC<DashboardProps> = ({ session }) => {
   };
 
   const toggleFavorite = async (entry: DictionaryEntry) => {
+    if (isGuest) {
+      alert("Please sign up to save favorites!");
+      return;
+    }
     const existingFav = getFavoritedItem(entry.word);
     
     try {
@@ -463,6 +472,25 @@ const Dashboard: React.FC<DashboardProps> = ({ session }) => {
     );
   };
 
+  const renderLockedFeature = (title: string, description: string) => (
+    <div className="flex-grow flex flex-col items-center justify-center py-20 bg-white rounded-3xl border border-slate-200 shadow-xl text-center max-w-2xl mx-auto px-8 animate-in zoom-in duration-300">
+      <div className="w-20 h-20 bg-indigo-50 text-indigo-600 rounded-2xl flex items-center justify-center mb-6 shadow-sm">
+        <svg className="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+        </svg>
+      </div>
+      <h2 className="text-3xl font-black text-slate-800 mb-4 tracking-tight">{title}</h2>
+      <p className="text-slate-500 text-lg mb-10 leading-relaxed max-w-md">{description}</p>
+      <button 
+        onClick={() => onExitGuest?.()}
+        className="bg-indigo-600 hover:bg-indigo-700 text-white font-black py-4 px-12 rounded-xl shadow-lg shadow-indigo-200 transition-all active:scale-95 text-lg"
+      >
+        Sign Up to Unlock
+      </button>
+      <p className="mt-6 text-slate-400 text-sm font-medium italic">It's free and takes 30 seconds.</p>
+    </div>
+  );
+
   return (
     <div className="min-h-screen bg-[#F0F2F5] flex flex-col text-[#1C1E21]">
       <nav className="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-sm">
@@ -483,11 +511,15 @@ const Dashboard: React.FC<DashboardProps> = ({ session }) => {
                 <button onClick={() => { setCurrentTab('search'); setSelectedFavorite(null); }} className={`flex items-center px-4 border-b-2 transition-colors font-semibold text-sm ${currentTab === 'search' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-[#65676B] hover:bg-slate-50'}`}>
                   <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>Search
                 </button>
-                <button onClick={() => { setCurrentTab('favorites'); setSelectedFavorite(null); }} className={`flex items-center px-4 border-b-2 transition-colors font-semibold text-sm ${currentTab === 'favorites' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-[#65676B] hover:bg-slate-50'}`}>
-                  <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" /></svg>Favorites
+                <button onClick={() => { setCurrentTab('favorites'); setSelectedFavorite(null); }} className={`flex items-center px-4 border-b-2 transition-colors font-semibold text-sm ${currentTab === 'favorites' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-[#65676B] hover:bg-slate-50'} relative`}>
+                  <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" /></svg>
+                  Favorites
+                  {isGuest && <svg className="w-3 h-3 absolute top-3 right-1 text-slate-400" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd" /></svg>}
                 </button>
-                <button onClick={() => { setCurrentTab('quiz'); setSelectedFavorite(null); }} className={`flex items-center px-4 border-b-2 transition-colors font-semibold text-sm ${currentTab === 'quiz' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-[#65676B] hover:bg-slate-50'}`}>
-                  <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" /></svg>Quiz
+                <button onClick={() => { setCurrentTab('quiz'); setSelectedFavorite(null); }} className={`flex items-center px-4 border-b-2 transition-colors font-semibold text-sm ${currentTab === 'quiz' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-[#65676B] hover:bg-slate-50'} relative`}>
+                  <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" /></svg>
+                  Quiz
+                  {isGuest && <svg className="w-3 h-3 absolute top-3 right-1 text-slate-400" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd" /></svg>}
                 </button>
               </div>
             </div>
@@ -495,7 +527,13 @@ const Dashboard: React.FC<DashboardProps> = ({ session }) => {
               <div className="flex items-center gap-3 bg-slate-50 px-3 py-1.5 rounded-full border border-slate-100">
                 <img className="h-7 w-7 rounded-full bg-white" src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${user.id}`} alt="Avatar" />
                 <span className="text-xs font-semibold text-slate-600 truncate max-w-[100px] hidden sm:block">{user.email}</span>
-                <button onClick={handleSignOut} disabled={signingOut} className="text-slate-400 hover:text-red-500 transition-colors"><svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" /></svg></button>
+                <button onClick={handleSignOut} disabled={signingOut} className="text-slate-400 hover:text-red-500 transition-colors">
+                  {isGuest ? (
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" /></svg>
+                  ) : (
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" /></svg>
+                  )}
+                </button>
               </div>
             </div>
           </div>
@@ -503,6 +541,27 @@ const Dashboard: React.FC<DashboardProps> = ({ session }) => {
       </nav>
 
       <main className="flex-grow flex flex-col max-w-4xl mx-auto w-full py-8 px-4">
+        {/* Guest Banner */}
+        {isGuest && currentTab === 'search' && (
+          <div className="mb-6 p-4 bg-indigo-600 text-white rounded-2xl shadow-lg flex items-center justify-between animate-in slide-in-from-top-4 duration-500">
+            <div className="flex items-center gap-4">
+              <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center">
+                <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2L14.4 9.6L22 12L14.4 14.4L12 22L9.6 14.4L2 12L9.6 9.6L12 2Z"/></svg>
+              </div>
+              <div>
+                <p className="font-black tracking-tight text-lg">Trial Mode Active</p>
+                <p className="text-indigo-100 text-xs font-medium">Create an account to save words and try the Daily Quiz!</p>
+              </div>
+            </div>
+            <button 
+              onClick={() => onExitGuest?.()}
+              className="bg-white text-indigo-600 font-bold px-5 py-2 rounded-xl text-sm shadow-sm transition-transform hover:scale-105 active:scale-95"
+            >
+              Sign Up
+            </button>
+          </div>
+        )}
+
         {/* Quota Error Notification */}
         {isQuotaExceeded && (
           <div className="mb-6 p-5 bg-amber-50 border border-amber-200 rounded-xl shadow-sm flex flex-col sm:flex-row items-center justify-between gap-4 animate-in fade-in slide-in-from-top-4 duration-300">
@@ -582,6 +641,7 @@ const Dashboard: React.FC<DashboardProps> = ({ session }) => {
             </div>
           </>
         ) : currentTab === 'quiz' ? (
+          isGuest ? renderLockedFeature("Premium Daily Quiz", "Challenge yourself with interactive vocabulary games to accelerate your learning. Join our community to access daily quizzes.") : (
           <div className="flex-grow flex flex-col max-w-2xl mx-auto w-full">
             <div className="bg-white rounded-2xl shadow-xl overflow-hidden border border-slate-200 flex flex-col min-h-[500px]">
               {/* Quiz Header & Timer */}
@@ -694,7 +754,9 @@ const Dashboard: React.FC<DashboardProps> = ({ session }) => {
             </div>
             <p className="mt-6 text-center text-slate-400 text-sm font-medium">Test language: <span className="text-slate-600 font-bold">{currentQuizLanguage?.name} {currentQuizLanguage?.flag}</span></p>
           </div>
+          )
         ) : (
+          isGuest ? renderLockedFeature("Personal Word Bank", "Save difficult words and build your own custom vocabulary library. Sign up to start building your personal linguist library.") : (
           <div className="flex flex-col gap-6">
             {!selectedFavorite ? (
               <>
@@ -733,6 +795,7 @@ const Dashboard: React.FC<DashboardProps> = ({ session }) => {
               </>
             ) : <div className="animate-in fade-in slide-in-from-right-4 duration-300">{renderResult(selectedFavorite.entry, true)}</div>}
           </div>
+          )
         )}
       </main>
       <footer className="py-6 text-center text-[#65676B] text-xs border-t border-slate-200 bg-white">© 2025 LinguistPro • <span className="text-indigo-600 font-semibold">Powered by TripleK</span></footer>
