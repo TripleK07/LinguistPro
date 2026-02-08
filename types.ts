@@ -1,6 +1,6 @@
 
 export type AuthView = 'login' | 'signup' | 'forgot-password';
-export type DashboardView = 'search' | 'favorites';
+export type DashboardView = 'search' | 'favorites' | 'quiz';
 
 export interface UserProfile {
   id: string;
