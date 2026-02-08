@@ -1,5 +1,7 @@
 {
   "name": "Linguist Pro",
   "description": "A high-performance React authentication system integrated with Supabase, featuring a world-class UI, smooth transitions, and a personalized dashboard experience.",
-  "requestFramePermissions": []
+  "requestFramePermissions": [
+    "microphone"
+  ]
 }

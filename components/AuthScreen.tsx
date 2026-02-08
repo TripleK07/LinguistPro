@@ -52,20 +52,49 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ view, setView }) => {
           
           <div className="relative z-10">
             <div className="flex items-center gap-3 mb-12">
-              <div className="w-10 h-10 bg-white/20 rounded-xl backdrop-blur-md flex items-center justify-center">
-                <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+              <div className="w-12 h-12 bg-gradient-to-tr from-indigo-500 to-violet-400 rounded-2xl shadow-xl flex items-center justify-center relative">
+                {/* Custom Logo SVG */}
+                <svg className="w-7 h-7 text-white" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M12 21C16.9706 21 21 16.9706 21 12C21 7.02944 16.9706 3 12 3C7.02944 3 3 7.02944 3 12C3 13.4876 3.36033 14.8911 4 16.1247L3 21L7.87528 20C9.10893 20.6397 10.5124 21 12 21Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                  <path d="M12 3C12 3 15 7 15 12C15 17 12 21 12 21" stroke="currentColor" strokeWidth="1.5" strokeOpacity="0.5" strokeLinecap="round"/>
+                  <path d="M12 3C12 3 9 7 9 12C9 17 12 21 12 21" stroke="currentColor" strokeWidth="1.5" strokeOpacity="0.5" strokeLinecap="round"/>
+                  <path d="M3.5 12H20.5" stroke="currentColor" strokeWidth="1.5" strokeOpacity="0.5" strokeLinecap="round"/>
                 </svg>
+                {/* AI Sparkle */}
+                <div className="absolute -top-1 -right-1 w-5 h-5 bg-white rounded-full flex items-center justify-center shadow-md">
+                   <svg className="w-3 h-3 text-indigo-600" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2L14.4 9.6L22 12L14.4 14.4L12 22L9.6 14.4L2 12L9.6 9.6L12 2Z"/></svg>
+                </div>
               </div>
-              <span className="text-xl font-bold tracking-tight">Linguist Pro</span>
+              <span className="text-2xl font-black tracking-tighter">Linguist<span className="text-indigo-200">Pro</span></span>
             </div>
             
             <h1 className="text-4xl font-extrabold leading-tight mb-6">
-              Master the Art of Language with Advanced AI.
+              Unlock the Secrets of Global Communication.
             </h1>
-            <p className="text-indigo-100 text-lg">
-              Bridge cultures and unlock deep meanings with our neural dictionary—designed for those who seek to understand the world.
+            <p className="text-indigo-100 text-lg mb-8">
+              Linguist Pro is your intelligent companion for language mastery. Explore deep definitions, perfect your pronunciation, and save words to your personal library.
             </p>
+
+            <div className="space-y-4">
+              <div className="flex items-center gap-4">
+                <div className="w-8 h-8 bg-white/10 rounded-lg flex items-center justify-center">
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 5h12M9 3v2m1.048 9.5A18.022 18.022 0 016.412 9m6.088 9h7M11 21l5-10 5 10M12.751 5C11.783 10.77 8.07 15.61 3 18.129" /></svg>
+                </div>
+                <span className="font-medium">8+ Global Languages Supported</span>
+              </div>
+              <div className="flex items-center gap-4">
+                <div className="w-8 h-8 bg-white/10 rounded-lg flex items-center justify-center">
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" /></svg>
+                </div>
+                <span className="font-medium">High-Quality Audio Pronunciations</span>
+              </div>
+              <div className="flex items-center gap-4">
+                <div className="w-8 h-8 bg-white/10 rounded-lg flex items-center justify-center">
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" /></svg>
+                </div>
+                <span className="font-medium">Personal Vocabulary Favorites</span>
+              </div>
+            </div>
           </div>
 
           <div className="relative z-10 mt-auto">
@@ -82,12 +111,12 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ view, setView }) => {
                 +12k
               </div>
             </div>
-            <p className="text-sm text-indigo-200">Trusted by over 12,000 language enthusiasts.</p>
+            <p className="text-sm text-indigo-200">Join over 12,000 language learners today.</p>
           </div>
         </div>
 
         {/* Form Side */}
-        <div className="w-full md:w-1/2 p-8 md:p-16 flex flex-col justify-center">
+        <div className="w-full md:w-1/2 p-8 md:p-16 flex flex-col justify-center bg-white">
           <div className="max-w-sm mx-auto w-full">
             <div className="mb-10 text-center md:text-left">
               <h2 className="text-3xl font-bold text-slate-800 mb-2">
@@ -122,21 +151,21 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ view, setView }) => {
 
             <form onSubmit={handleAuth} className="space-y-5">
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">Email Address</label>
+                <label className="block text-sm font-medium text-slate-600 mb-2">Email Address</label>
                 <input
                   type="email"
                   required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="name@example.com"
-                  className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 outline-none transition-all placeholder:text-slate-400"
+                  className="w-full px-4 py-3 rounded-xl border border-slate-200 bg-slate-50/50 focus:bg-white focus:border-indigo-500 focus:ring-4 focus:ring-indigo-50 outline-none transition-all placeholder:text-slate-400 text-slate-700"
                 />
               </div>
 
               {view !== 'forgot-password' && (
                 <div>
                   <div className="flex justify-between items-center mb-2">
-                    <label className="text-sm font-medium text-slate-700">Password</label>
+                    <label className="text-sm font-medium text-slate-600">Password</label>
                     {view === 'login' && (
                       <button 
                         type="button"
@@ -153,7 +182,7 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ view, setView }) => {
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="••••••••"
-                    className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 outline-none transition-all placeholder:text-slate-400"
+                    className="w-full px-4 py-3 rounded-xl border border-slate-200 bg-slate-50/50 focus:bg-white focus:border-indigo-500 focus:ring-4 focus:ring-indigo-50 outline-none transition-all placeholder:text-slate-400 text-slate-700"
                   />
                 </div>
               )}
@@ -161,7 +190,7 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ view, setView }) => {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full bg-slate-900 hover:bg-slate-800 disabled:bg-slate-400 text-white font-semibold py-3.5 rounded-xl transition-all flex items-center justify-center gap-2 mt-4"
+                className="w-full bg-indigo-600 hover:bg-indigo-700 active:scale-[0.98] disabled:bg-indigo-300 text-white font-bold py-4 rounded-xl shadow-lg shadow-indigo-200 transition-all flex items-center justify-center gap-2 mt-4"
               >
                 {loading && (
                   <svg className="animate-spin h-5 w-5 text-white" fill="none" viewBox="0 0 24 24">
@@ -177,14 +206,14 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ view, setView }) => {
               {view === 'login' ? (
                 <p>
                   New to Linguist Pro?{' '}
-                  <button onClick={() => setView('signup')} className="font-semibold text-indigo-600 hover:text-indigo-700">
+                  <button onClick={() => setView('signup')} className="font-bold text-indigo-600 hover:text-indigo-700 hover:underline">
                     Sign up free
                   </button>
                 </p>
               ) : (
                 <p>
                   Already part of our community?{' '}
-                  <button onClick={() => setView('login')} className="font-semibold text-indigo-600 hover:text-indigo-700">
+                  <button onClick={() => setView('login')} className="font-bold text-indigo-600 hover:text-indigo-700 hover:underline">
                     Log in
                   </button>
                 </p>

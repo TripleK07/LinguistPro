@@ -42,6 +42,23 @@ export async function lookupWord(word: string, targetLanguage: string) {
   return JSON.parse(response.text) as any;
 }
 
+export async function transcribeAudio(base64Audio: string, mimeType: string) {
+  const response = await ai.models.generateContent({
+    model: "gemini-3-flash-preview",
+    contents: [
+      {
+        inlineData: {
+          mimeType: mimeType,
+          data: base64Audio,
+        },
+      },
+      { text: "Transcribe the spoken audio into a single English word for a dictionary search. Output ONLY the word, nothing else. If multiple words are spoken, output the most likely single search term." },
+    ],
+  });
+
+  return response.text?.trim() || "";
+}
+
 export async function generateSpeech(text: string) {
   const response = await ai.models.generateContent({
     model: "gemini-2.5-flash-preview-tts",
