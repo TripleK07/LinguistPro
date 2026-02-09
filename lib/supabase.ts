@@ -5,8 +5,10 @@ import { getEnv } from './env';
 export const SUPABASE_URL = getEnv('SUPABASE_URL');
 export const SUPABASE_ANON_KEY = getEnv('SUPABASE_ANON_KEY');
 
-// Only initialize if we have the required parameters to avoid the 'supabaseUrl is required' error
-export const supabase = (SUPABASE_URL && SUPABASE_ANON_KEY) 
+// Verify URL looks valid before creating client to prevent initialization crashes
+const isValidUrl = (url: string) => url && url.startsWith('http');
+
+export const supabase = (isValidUrl(SUPABASE_URL) && SUPABASE_ANON_KEY) 
   ? createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
       auth: {
         persistSession: true,
