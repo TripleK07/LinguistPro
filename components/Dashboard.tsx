@@ -64,16 +64,17 @@ const Dashboard: React.FC<DashboardProps> = ({ session, isGuest, onExitGuest }) 
   const currentQuizLanguage = LANGUAGES.find(l => l.code === quizTargetLang);
 
   useEffect(() => {
-    if (!isGuest) {
+    if (!isGuest && supabase) {
       fetchFavorites();
     }
     return () => {
       stopRecording();
       if (timerIntervalRef.current) clearInterval(timerIntervalRef.current);
     };
-  }, [user.id]);
+  }, [user.id, isGuest]);
 
   const fetchFavorites = async () => {
+    if (!supabase) return;
     setLoadingFavorites(true);
     try {
       const { data, error } = await supabase
@@ -169,6 +170,7 @@ const Dashboard: React.FC<DashboardProps> = ({ session, isGuest, onExitGuest }) 
       onExitGuest?.();
       return;
     }
+    if (!supabase) return;
     setSigningOut(true);
     await supabase.auth.signOut();
   };
@@ -323,6 +325,7 @@ const Dashboard: React.FC<DashboardProps> = ({ session, isGuest, onExitGuest }) 
       alert("Please sign up to save favorites!");
       return;
     }
+    if (!supabase) return;
     const existingFav = getFavoritedItem(entry.word);
     
     try {

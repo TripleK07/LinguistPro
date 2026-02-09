@@ -1,5 +1,6 @@
 
 import { GoogleGenAI, Type, Modality } from "@google/genai";
+import { getEnv } from "./env";
 
 /**
  * Helper to implement exponential backoff for API calls
@@ -23,10 +24,11 @@ async function callWithRetry<T>(fn: () => Promise<T>, maxRetries = 3): Promise<T
 }
 
 /**
- * Creates a fresh AI instance using the current process.env.API_KEY
+ * Creates a fresh AI instance using safe environment lookup
  */
 function getAI() {
-  return new GoogleGenAI({ apiKey: process.env.API_KEY });
+  const apiKey = getEnv('API_KEY');
+  return new GoogleGenAI({ apiKey });
 }
 
 export async function lookupWord(word: string, targetLanguage: string) {
@@ -102,7 +104,6 @@ export async function getQuizWord(targetLanguage: string, excludeWords: string[]
 export async function transcribeAudio(base64Audio: string, mimeType: string) {
   return callWithRetry(async () => {
     const ai = getAI();
-    // Corrected to use the standard Content object structure with parts
     const response = await ai.models.generateContent({
       model: "gemini-3-flash-preview",
       contents: {
@@ -144,7 +145,6 @@ export async function generateSpeech(text: string) {
   });
 }
 
-// Audio Utils
 export function decodeBase64(base64: string) {
   const binaryString = atob(base64);
   const len = binaryString.length;
