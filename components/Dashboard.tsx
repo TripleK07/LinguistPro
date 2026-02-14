@@ -526,8 +526,8 @@ const Dashboard: React.FC<DashboardProps> = ({ session, isGuest, onExitGuest }) 
                 <button onClick={() => { setCurrentTab('favorites'); setSelectedFavorite(null); }} className={`flex items-center px-4 border-b-2 transition-colors font-semibold text-sm ${currentTab === 'favorites' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-[#65676B] hover:bg-slate-50'} relative`}>
                   <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" /></svg>
                   Favorites
-                  {!isGuest && favorites.length > 0 && (
-                    <span className="ml-1.5 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-indigo-600 px-1 text-[10px] font-bold text-white shadow-sm">
+                  {!isGuest && (
+                    <span className={`ml-1.5 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-indigo-600 px-1 text-[10px] font-bold text-white shadow-sm transition-opacity duration-300 ${favorites.length > 0 ? 'opacity-100' : 'opacity-0'}`}>
                       {favorites.length}
                     </span>
                   )}
