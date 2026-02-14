@@ -19,10 +19,10 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ view, setView, onTryAsGuest, de
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
-  const [showIOSGuide, setShowIOSGuide] = useState(false);
+  const [showGuide, setShowGuide] = useState(false);
 
   useEffect(() => {
-    const handleGuideRequest = () => setShowIOSGuide(true);
+    const handleGuideRequest = () => setShowGuide(true);
     window.addEventListener('show-pwa-guide', handleGuideRequest);
     return () => window.removeEventListener('show-pwa-guide', handleGuideRequest);
   }, []);
@@ -53,13 +53,18 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ view, setView, onTryAsGuest, de
     }
   };
 
-  // Determine if the install button should be shown
-  const canInstall = !!deferredPrompt || (isIOS && !isStandalone);
+  const handleInstallClick = () => {
+    if (deferredPrompt) {
+      onInstallApp?.();
+    } else {
+      setShowGuide(true);
+    }
+  };
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 to-indigo-50 p-4 relative">
-      {/* iOS Install Guide Modal */}
-      {showIOSGuide && (
+      {/* Universal Install Guide Modal */}
+      {showGuide && (
         <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-300">
           <div className="w-full max-w-sm bg-white rounded-3xl shadow-2xl p-8 animate-in slide-in-from-bottom-10 duration-500">
             <div className="flex justify-between items-start mb-6">
@@ -69,22 +74,39 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ view, setView, onTryAsGuest, de
                 </div>
                 <h3 className="text-xl font-bold text-slate-800">Install Linguist</h3>
               </div>
-              <button onClick={() => setShowIOSGuide(false)} className="text-slate-400 hover:text-slate-600 transition-colors">
+              <button onClick={() => setShowGuide(false)} className="text-slate-400 hover:text-slate-600 transition-colors">
                 <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg>
               </button>
             </div>
-            <div className="space-y-6 mb-8">
-              <div className="flex items-start gap-4">
-                <div className="w-8 h-8 bg-slate-100 rounded-lg flex items-center justify-center flex-shrink-0 font-bold text-slate-600 text-sm">1</div>
-                <p className="text-slate-600 text-sm leading-relaxed">Tap the <b>Share</b> button in Safari's bottom toolbar.</p>
-              </div>
-              <div className="flex items-start gap-4">
-                <div className="w-8 h-8 bg-slate-100 rounded-lg flex items-center justify-center flex-shrink-0 font-bold text-slate-600 text-sm">2</div>
-                <p className="text-slate-600 text-sm leading-relaxed">Scroll down and select <b>Add to Home Screen</b>.</p>
-              </div>
+            
+            <div className="space-y-6 mb-8 text-sm text-slate-600 leading-relaxed">
+              {isIOS ? (
+                <>
+                  <div className="flex items-start gap-4">
+                    <div className="w-8 h-8 bg-slate-100 rounded-lg flex items-center justify-center flex-shrink-0 font-bold text-slate-600">1</div>
+                    <p>Tap the <b>Share</b> button in Safari's bottom toolbar.</p>
+                  </div>
+                  <div className="flex items-start gap-4">
+                    <div className="w-8 h-8 bg-slate-100 rounded-lg flex items-center justify-center flex-shrink-0 font-bold text-slate-600">2</div>
+                    <p>Scroll down and select <b>Add to Home Screen</b>.</p>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="flex items-start gap-4">
+                    <div className="w-8 h-8 bg-slate-100 rounded-lg flex items-center justify-center flex-shrink-0 font-bold text-slate-600">1</div>
+                    <p>Open your browser's menu (usually three dots <b className="text-lg leading-none">⋮</b> or lines).</p>
+                  </div>
+                  <div className="flex items-start gap-4">
+                    <div className="w-8 h-8 bg-slate-100 rounded-lg flex items-center justify-center flex-shrink-0 font-bold text-slate-600">2</div>
+                    <p>Select <b>Install App</b> or <b>Add to Home Screen</b>.</p>
+                  </div>
+                </>
+              )}
             </div>
+
             <button 
-              onClick={() => setShowIOSGuide(false)}
+              onClick={() => setShowGuide(false)}
               className="w-full bg-indigo-600 text-white font-bold py-3.5 rounded-xl shadow-lg shadow-indigo-100 active:scale-95 transition-all"
             >
               Got it
@@ -94,7 +116,6 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ view, setView, onTryAsGuest, de
       )}
 
       <div className="w-full max-w-[1100px] flex flex-col md:flex-row bg-white rounded-3xl shadow-2xl overflow-hidden min-h-[600px] z-10">
-        
         {/* Visual Side */}
         <div className="hidden md:flex md:w-1/2 bg-indigo-600 p-12 text-white flex-col justify-between relative overflow-hidden">
           <div className="absolute top-0 right-0 -mt-20 -mr-20 w-80 h-80 bg-indigo-500 rounded-full blur-3xl opacity-50"></div>
@@ -234,11 +255,11 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ view, setView, onTryAsGuest, de
                 <p>Already part of our community? <button onClick={() => setView('login')} className="font-bold text-indigo-600 hover:text-indigo-700 hover:underline">Log in</button></p>
               )}
               
-              {/* Custom Install Button - Positioned exactly below Sign up free */}
-              {canInstall && (
+              {/* Custom Install Button - Persistent below Sign up free */}
+              {!isStandalone && (
                 <div className="mt-6 pt-6 border-t border-slate-100 flex flex-col items-center animate-in fade-in slide-in-from-top-2 duration-500">
                   <button 
-                    onClick={onInstallApp}
+                    onClick={handleInstallClick}
                     className="flex items-center gap-3 bg-slate-50 hover:bg-indigo-50 border border-slate-200 hover:border-indigo-200 text-slate-700 hover:text-indigo-700 px-8 py-3 rounded-2xl transition-all active:scale-95 group shadow-sm hover:shadow-md"
                   >
                     <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center shadow-sm group-hover:shadow transition-shadow">
@@ -247,11 +268,11 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ view, setView, onTryAsGuest, de
                       </svg>
                     </div>
                     <div className="text-left">
-                      <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 group-hover:text-indigo-400 leading-none mb-1">Native Desktop Experience</p>
+                      <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 group-hover:text-indigo-400 leading-none mb-1">Native App Experience</p>
                       <p className="text-sm font-black leading-none">Download App</p>
                     </div>
                   </button>
-                  <p className="mt-3 text-[10px] text-slate-400 font-medium">Pin to taskbar or home screen for quick access</p>
+                  <p className="mt-3 text-[10px] text-slate-400 font-medium">Fast, secure, and available offline</p>
                 </div>
               )}
             </div>
