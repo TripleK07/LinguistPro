@@ -3,8 +3,13 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>Linguist Pro</title>
+  <meta name="theme-color" content="#4f46e5">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/2984/2984102.png">
+  <link rel="manifest" href="./manifest.json">
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -14,13 +19,21 @@
       font-family: 'Inter', sans-serif;
       background-color: #f8fafc;
       margin: 0;
+      -webkit-tap-highlight-color: transparent;
     }
     #root {
       min-height: 100vh;
     }
+    /* Simple animation for PWA entrance */
+    .pwa-fade-in {
+      animation: fadeIn 0.5s ease-out;
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
   </style>
   <script>
-    // Essential shim for libraries that expect process.env in the browser
     window.process = window.process || { env: {} };
   </script>
 <script type="importmap">
@@ -37,7 +50,6 @@
 </head>
 <body>
   <div id="root"></div>
-  <!-- Entry point for the application -->
   <script type="module" src="./index.tsx"></script>
 </body>
 </html>

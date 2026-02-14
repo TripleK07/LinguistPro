@@ -4,6 +4,7 @@ import { supabase, isSupabaseConfigured, SUPABASE_URL, SUPABASE_ANON_KEY } from 
 import { getEnv, setLocalEnv, clearLocalEnv } from './lib/env';
 import AuthScreen from './components/AuthScreen';
 import Dashboard from './components/Dashboard';
+import PWAInstaller from './components/PWAInstaller';
 import { AuthView } from './types';
 
 const App: React.FC = () => {
@@ -34,7 +35,7 @@ const App: React.FC = () => {
     e.preventDefault();
     if (manualUrl) setLocalEnv('SUPABASE_URL', manualUrl);
     if (manualKey) setLocalEnv('SUPABASE_ANON_KEY', manualKey);
-    window.location.reload(); // Reload to re-initialize supabase client with new env
+    window.location.reload(); 
   };
 
   const handleResetConfig = () => {
@@ -207,6 +208,7 @@ const App: React.FC = () => {
           onTryAsGuest={handleTryAsGuest}
         />
       )}
+      <PWAInstaller />
     </div>
   );
 };

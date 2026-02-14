@@ -26,6 +26,7 @@ const QUIZ_DURATION = 10; // 10 seconds
 const Dashboard: React.FC<DashboardProps> = ({ session, isGuest, onExitGuest }) => {
   const [signingOut, setSigningOut] = useState(false);
   const [currentTab, setCurrentTab] = useState<DashboardView>('search');
+  const [isStandalone, setIsStandalone] = useState(false);
   
   // Search State
   const [searchWord, setSearchWord] = useState('');
@@ -64,6 +65,10 @@ const Dashboard: React.FC<DashboardProps> = ({ session, isGuest, onExitGuest }) 
   const currentQuizLanguage = LANGUAGES.find(l => l.code === quizTargetLang);
 
   useEffect(() => {
+    // Check if running in standalone mode
+    const standalone = window.matchMedia('(display-mode: standalone)').matches || (window.navigator as any).standalone;
+    setIsStandalone(!!standalone);
+
     if (!isGuest && supabase) {
       fetchFavorites();
     }
@@ -90,6 +95,10 @@ const Dashboard: React.FC<DashboardProps> = ({ session, isGuest, onExitGuest }) 
     } finally {
       setLoadingFavorites(false);
     }
+  };
+
+  const handleTriggerInstall = () => {
+    window.dispatchEvent(new CustomEvent('trigger-pwa-install'));
   };
 
   const handleQuotaError = (err: any) => {
@@ -527,6 +536,17 @@ const Dashboard: React.FC<DashboardProps> = ({ session, isGuest, onExitGuest }) 
               </div>
             </div>
             <div className="flex items-center gap-2">
+              {!isStandalone && (
+                <button 
+                  onClick={handleTriggerInstall}
+                  className="p-2 text-indigo-600 hover:bg-indigo-50 rounded-full transition-colors hidden sm:flex"
+                  title="Install App"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                  </svg>
+                </button>
+              )}
               <div className="flex items-center gap-3 bg-slate-50 px-3 py-1.5 rounded-full border border-slate-100">
                 <img className="h-7 w-7 rounded-full bg-white" src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${user.id}`} alt="Avatar" />
                 <span className="text-xs font-semibold text-slate-600 truncate max-w-[100px] hidden sm:block">{user.email}</span>
