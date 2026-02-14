@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { supabase, isSupabaseConfigured } from './lib/supabase';
 import { getEnv, setLocalEnv, clearLocalEnv } from './lib/env';
 import AuthScreen from './components/AuthScreen';
@@ -50,9 +50,12 @@ const App: React.FC = () => {
     setIsStandalone(!!standalone);
     setIsIOS(/iphone|ipad|ipod/.test(window.navigator.userAgent.toLowerCase()));
 
-    // PWA Install logic for Chrome/Android/Edge
-    const handleBeforeInstallPrompt = (e: any) => {
+    // PWA Install logic
+    const handleBeforeInstallPrompt = (e: Event) => {
+      // Prevent the mini-infobar from appearing on mobile
       e.preventDefault();
+      // Stash the event so it can be triggered later.
+      console.log('PWA: beforeinstallprompt event captured');
       setDeferredPrompt(e);
     };
 
@@ -91,21 +94,22 @@ const App: React.FC = () => {
     };
   }, [configMissing]);
 
-  const handleInstallApp = async () => {
+  const handleInstallApp = useCallback(async () => {
     if (deferredPrompt) {
+      // Show the install prompt
       deferredPrompt.prompt();
+      // Wait for the user to respond to the prompt
       const { outcome } = await deferredPrompt.userChoice;
-      if (outcome === 'accepted') {
-        setDeferredPrompt(null);
-      }
-    } else if (isIOS) {
-      // Logic for showing the iOS guide is handled inside the components via a modal state
+      console.log(`PWA: User response to install prompt: ${outcome}`);
+      // We've used the prompt, and can't use it again, throw it away
+      setDeferredPrompt(null);
+    } else if (isIOS && !isStandalone) {
+      // iOS doesn't support beforeinstallprompt, show the guide
       window.dispatchEvent(new CustomEvent('show-pwa-guide'));
     } else {
-      // Fallback: trigger a simple alert or just do nothing if neither is available
-      console.log('App is already installed or browser does not support custom prompt.');
+      console.log('PWA: Install not available. Standard reasons: Already installed, not HTTPS, or browser not supported.');
     }
-  };
+  }, [deferredPrompt, isIOS, isStandalone]);
 
   if (loading) {
     return (

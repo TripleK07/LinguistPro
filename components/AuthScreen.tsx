@@ -53,6 +53,9 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ view, setView, onTryAsGuest, de
     }
   };
 
+  // Determine if the install button should be shown
+  const canInstall = !!deferredPrompt || (isIOS && !isStandalone);
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 to-indigo-50 p-4 relative">
       {/* iOS Install Guide Modal */}
@@ -232,8 +235,8 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ view, setView, onTryAsGuest, de
               )}
               
               {/* Custom Install Button - Positioned exactly below Sign up free */}
-              {!isStandalone && (
-                <div className="mt-6 pt-6 border-t border-slate-100 flex flex-col items-center">
+              {canInstall && (
+                <div className="mt-6 pt-6 border-t border-slate-100 flex flex-col items-center animate-in fade-in slide-in-from-top-2 duration-500">
                   <button 
                     onClick={onInstallApp}
                     className="flex items-center gap-3 bg-slate-50 hover:bg-indigo-50 border border-slate-200 hover:border-indigo-200 text-slate-700 hover:text-indigo-700 px-8 py-3 rounded-2xl transition-all active:scale-95 group shadow-sm hover:shadow-md"
