@@ -1,84 +1,150 @@
 
 import { GoogleGenAI, Type, Modality } from "@google/genai";
+import { getEnv } from "./env";
 
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+/**
+ * Helper to implement exponential backoff for API calls
+ */
+async function callWithRetry<T>(fn: () => Promise<T>, maxRetries = 3): Promise<T> {
+  let delay = 1000;
+  for (let i = 0; i < maxRetries; i++) {
+    try {
+      return await fn();
+    } catch (err: any) {
+      const isRateLimit = err.message?.includes('429') || err.status === 429;
+      if (isRateLimit && i < maxRetries - 1) {
+        await new Promise(r => setTimeout(r, delay));
+        delay *= 2;
+        continue;
+      }
+      throw err;
+    }
+  }
+  return await fn();
+}
+
+/**
+ * Creates a fresh AI instance using safe environment lookup
+ */
+function getAI() {
+  const apiKey = getEnv('API_KEY');
+  return new GoogleGenAI({ apiKey });
+}
 
 export async function lookupWord(word: string, targetLanguage: string) {
-  const response = await ai.models.generateContent({
-    model: "gemini-3-flash-preview",
-    contents: `Look up the English word "${word}" and translate it to ${targetLanguage}. 
-    Provide phonetics (IPA), a clear definition, 3 usage examples, and 5 synonyms.
-    IMPORTANT: For each example, provide both the original English sentence and its translation in ${targetLanguage}.`,
-    config: {
-      responseMimeType: "application/json",
-      responseSchema: {
-        type: Type.OBJECT,
-        properties: {
-          word: { type: Type.STRING },
-          phonetics: { type: Type.STRING },
-          translation: { type: Type.STRING },
-          definition: { type: Type.STRING },
-          examples: {
-            type: Type.ARRAY,
-            items: { 
-              type: Type.OBJECT,
-              properties: {
-                original: { type: Type.STRING },
-                translated: { type: Type.STRING }
-              },
-              required: ["original", "translated"]
+  return callWithRetry(async () => {
+    const ai = getAI();
+    const response = await ai.models.generateContent({
+      model: "gemini-3-flash-preview",
+      contents: `Look up the English word "${word}" and translate it to ${targetLanguage}. 
+      Provide phonetics (IPA), a clear definition, 3 usage examples, and 5 synonyms.
+      IMPORTANT: For each example, provide both the original English sentence and its translation in ${targetLanguage}.`,
+      config: {
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: Type.OBJECT,
+          properties: {
+            word: { type: Type.STRING },
+            phonetics: { type: Type.STRING },
+            translation: { type: Type.STRING },
+            definition: { type: Type.STRING },
+            examples: {
+              type: Type.ARRAY,
+              items: { 
+                type: Type.OBJECT,
+                properties: {
+                  original: { type: Type.STRING },
+                  translated: { type: Type.STRING }
+                },
+                required: ["original", "translated"]
+              }
+            },
+            synonyms: {
+              type: Type.ARRAY,
+              items: { type: Type.STRING }
             }
           },
-          synonyms: {
-            type: Type.ARRAY,
-            items: { type: Type.STRING }
-          }
-        },
-        required: ["word", "phonetics", "translation", "definition", "examples", "synonyms"]
+          required: ["word", "phonetics", "translation", "definition", "examples", "synonyms"]
+        }
       }
-    }
-  });
+    });
 
-  return JSON.parse(response.text) as any;
+    return JSON.parse(response.text) as any;
+  });
+}
+
+export async function getQuizWord(targetLanguage: string, excludeWords: string[] = []) {
+  return callWithRetry(async () => {
+    const ai = getAI();
+    const excludeText = excludeWords.length > 0 ? `DO NOT use any of these words: ${excludeWords.join(', ')}.` : '';
+    const response = await ai.models.generateContent({
+      model: "gemini-3-flash-preview",
+      contents: `Generate a unique, common, and useful word in ${targetLanguage} and its English translation for a vocabulary quiz.
+      Avoid very basic words like "hello", "yes", or "no" unless they are part of a more complex set. 
+      Pick a word that is interesting for an intermediate learner.
+      ${excludeText}
+      Randomness seed: ${Math.random()} (Time: ${Date.now()})`,
+      config: {
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: Type.OBJECT,
+          properties: {
+            targetWord: { type: Type.STRING, description: "The word in the foreign language" },
+            englishTranslation: { type: Type.STRING, description: "The single-word English translation" }
+          },
+          required: ["targetWord", "englishTranslation"]
+        }
+      }
+    });
+
+    return JSON.parse(response.text);
+  });
 }
 
 export async function transcribeAudio(base64Audio: string, mimeType: string) {
-  const response = await ai.models.generateContent({
-    model: "gemini-3-flash-preview",
-    contents: [
-      {
-        inlineData: {
-          mimeType: mimeType,
-          data: base64Audio,
-        },
+  return callWithRetry(async () => {
+    const ai = getAI();
+    const response = await ai.models.generateContent({
+      model: "gemini-3-flash-preview",
+      contents: {
+        parts: [
+          {
+            inlineData: {
+              mimeType: mimeType,
+              data: base64Audio,
+            },
+          },
+          { text: "Transcribe the spoken audio into a single English word for a dictionary search. Output ONLY the word, nothing else. If multiple words are spoken, output the most likely single search term." },
+        ],
       },
-      { text: "Transcribe the spoken audio into a single English word for a dictionary search. Output ONLY the word, nothing else. If multiple words are spoken, output the most likely single search term." },
-    ],
-  });
+    });
 
-  return response.text?.trim() || "";
+    return response.text?.trim() || "";
+  });
 }
 
 export async function generateSpeech(text: string) {
-  const response = await ai.models.generateContent({
-    model: "gemini-2.5-flash-preview-tts",
-    contents: [{ parts: [{ text: `Pronounce clearly: ${text}` }] }],
-    config: {
-      responseModalities: [Modality.AUDIO],
-      speechConfig: {
-        voiceConfig: {
-          prebuiltVoiceConfig: { voiceName: 'Kore' },
+  return callWithRetry(async () => {
+    const ai = getAI();
+    const response = await ai.models.generateContent({
+      model: "gemini-2.5-flash-preview-tts",
+      contents: [{ parts: [{ text: `Pronounce clearly: ${text}` }] }],
+      config: {
+        responseModalities: [Modality.AUDIO],
+        speechConfig: {
+          voiceConfig: {
+            prebuiltVoiceConfig: { voiceName: 'Kore' },
+          },
         },
       },
-    },
-  });
+    });
 
-  const base64Audio = response.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
-  if (!base64Audio) throw new Error("No audio data received");
-  return base64Audio;
+    const base64Audio = response.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
+    if (!base64Audio) throw new Error("No audio data received");
+    return base64Audio;
+  });
 }
 
-// Audio Utils
 export function decodeBase64(base64: string) {
   const binaryString = atob(base64);
   const len = binaryString.length;
