@@ -1,10 +1,9 @@
 
 import React, { useState, useEffect } from 'react';
-import { supabase, isSupabaseConfigured, SUPABASE_URL, SUPABASE_ANON_KEY } from './lib/supabase';
+import { supabase, isSupabaseConfigured } from './lib/supabase';
 import { getEnv, setLocalEnv, clearLocalEnv } from './lib/env';
 import AuthScreen from './components/AuthScreen';
 import Dashboard from './components/Dashboard';
-import PWAInstaller from './components/PWAInstaller';
 import { AuthView } from './types';
 
 const App: React.FC = () => {
@@ -208,7 +207,6 @@ const App: React.FC = () => {
           onTryAsGuest={handleTryAsGuest}
         />
       )}
-      <PWAInstaller />
     </div>
   );
 };
