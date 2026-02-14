@@ -185,7 +185,7 @@ const App: React.FC = () => {
 
           <div className="mt-8 pt-6 border-t border-slate-100">
             <p className="text-[10px] text-slate-400 leading-relaxed text-center italic">
-              Note: This is for local preview convenience. For production, add your variables to the <b>Vercel Project Settings</b>.
+              <b>Pro Tip:</b> In "Preview mode", the browser sandbox often clears <i>localStorage</i> on refresh. For a permanent connection, add your Supabase variables to the <b>Project Environment Variables</b>.
             </p>
           </div>
         </div>

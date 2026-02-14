@@ -526,6 +526,11 @@ const Dashboard: React.FC<DashboardProps> = ({ session, isGuest, onExitGuest }) 
                 <button onClick={() => { setCurrentTab('favorites'); setSelectedFavorite(null); }} className={`flex items-center px-4 border-b-2 transition-colors font-semibold text-sm ${currentTab === 'favorites' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-[#65676B] hover:bg-slate-50'} relative`}>
                   <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" /></svg>
                   Favorites
+                  {!isGuest && favorites.length > 0 && (
+                    <span className="ml-1.5 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-indigo-600 px-1 text-[10px] font-bold text-white shadow-sm">
+                      {favorites.length}
+                    </span>
+                  )}
                   {isGuest && <svg className="w-3 h-3 absolute top-3 right-1 text-slate-400" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd" /></svg>}
                 </button>
                 <button onClick={() => { setCurrentTab('quiz'); setSelectedFavorite(null); }} className={`flex items-center px-4 border-b-2 transition-colors font-semibold text-sm ${currentTab === 'quiz' ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-[#65676B] hover:bg-slate-50'} relative`}>
@@ -539,12 +544,12 @@ const Dashboard: React.FC<DashboardProps> = ({ session, isGuest, onExitGuest }) 
               {!isStandalone && (
                 <button 
                   onClick={handleTriggerInstall}
-                  className="p-2 text-indigo-600 hover:bg-indigo-50 rounded-full transition-colors hidden sm:flex"
-                  title="Install App"
+                  className="bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold px-4 py-1.5 rounded-full text-xs transition-all flex items-center gap-2 border border-indigo-200 shadow-sm active:scale-95"
                 >
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
                   </svg>
+                  <span>Install App</span>
                 </button>
               )}
               <div className="flex items-center gap-3 bg-slate-50 px-3 py-1.5 rounded-full border border-slate-100">
