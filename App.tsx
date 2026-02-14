@@ -11,13 +11,15 @@ const App: React.FC = () => {
   const [isGuest, setIsGuest] = useState(false);
   const [loading, setLoading] = useState(true);
   const [currentView, setCurrentView] = useState<AuthView>('login');
+  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
+  const [isStandalone, setIsStandalone] = useState(false);
+  const [isIOS, setIsIOS] = useState(false);
   
   // Local states for manual config form
   const [manualUrl, setManualUrl] = useState('');
   const [manualKey, setManualKey] = useState('');
   const [showManualForm, setShowManualForm] = useState(false);
 
-  // Use the safe utility instead of direct process.env access
   const geminiApiKey = getEnv('API_KEY');
   const configMissing = !isSupabaseConfigured() || !geminiApiKey;
 
@@ -43,6 +45,19 @@ const App: React.FC = () => {
   };
 
   useEffect(() => {
+    // Detect Standalone and iOS
+    const standalone = window.matchMedia('(display-mode: standalone)').matches || (window.navigator as any).standalone;
+    setIsStandalone(!!standalone);
+    setIsIOS(/iphone|ipad|ipod/.test(window.navigator.userAgent.toLowerCase()));
+
+    // PWA Install logic for Chrome/Android/Edge
+    const handleBeforeInstallPrompt = (e: any) => {
+      e.preventDefault();
+      setDeferredPrompt(e);
+    };
+
+    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+
     if (configMissing) {
       setLoading(false);
       return;
@@ -72,8 +87,25 @@ const App: React.FC = () => {
 
     return () => {
       subscription.unsubscribe();
+      window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
     };
   }, [configMissing]);
+
+  const handleInstallApp = async () => {
+    if (deferredPrompt) {
+      deferredPrompt.prompt();
+      const { outcome } = await deferredPrompt.userChoice;
+      if (outcome === 'accepted') {
+        setDeferredPrompt(null);
+      }
+    } else if (isIOS) {
+      // Logic for showing the iOS guide is handled inside the components via a modal state
+      window.dispatchEvent(new CustomEvent('show-pwa-guide'));
+    } else {
+      // Fallback: trigger a simple alert or just do nothing if neither is available
+      console.log('App is already installed or browser does not support custom prompt.');
+    }
+  };
 
   if (loading) {
     return (
@@ -199,12 +231,20 @@ const App: React.FC = () => {
           session={session} 
           isGuest={isGuest} 
           onExitGuest={handleExitGuest}
+          deferredPrompt={deferredPrompt}
+          isStandalone={isStandalone}
+          isIOS={isIOS}
+          onInstallApp={handleInstallApp}
         />
       ) : (
         <AuthScreen 
           view={currentView} 
           setView={setCurrentView} 
           onTryAsGuest={handleTryAsGuest}
+          deferredPrompt={deferredPrompt}
+          isStandalone={isStandalone}
+          isIOS={isIOS}
+          onInstallApp={handleInstallApp}
         />
       )}
     </div>
