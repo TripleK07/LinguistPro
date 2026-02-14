@@ -8,24 +8,32 @@ const PWAInstaller: React.FC = () => {
   const [platformInfo, setPlatformInfo] = useState<{
     isIOS: boolean;
     isMacSafari: boolean;
-    isDesktopChrome: boolean;
+    isChrome: boolean;
+    isEdge: boolean;
+    isWindows: boolean;
   }>({
     isIOS: false,
     isMacSafari: false,
-    isDesktopChrome: false,
+    isChrome: false,
+    isEdge: false,
+    isWindows: false,
   });
 
   const detectPlatform = useCallback(() => {
     const ua = window.navigator.userAgent.toLowerCase();
     const isIOS = /iphone|ipad|ipod/.test(ua);
     const isMac = /macintosh/.test(ua);
-    const isSafari = /safari/.test(ua) && !/chrome/.test(ua);
-    const isChrome = /chrome/.test(ua);
+    const isWindows = /windows/.test(ua);
+    const isEdge = /edg\//.test(ua); // Edge specifically
+    const isChrome = /chrome/.test(ua) && !isEdge;
+    const isSafari = /safari/.test(ua) && !isChrome && !isEdge;
     
     setPlatformInfo({
       isIOS,
       isMacSafari: isMac && isSafari,
-      isDesktopChrome: !isIOS && isChrome && !isMac,
+      isChrome,
+      isEdge,
+      isWindows,
     });
   }, []);
 
@@ -60,7 +68,6 @@ const PWAInstaller: React.FC = () => {
     window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
     window.addEventListener('trigger-pwa-install', handleCustomTrigger);
 
-    // Default visible if not standalone to allow manual guide access
     setIsVisible(true);
 
     return () => {
@@ -116,6 +123,44 @@ const PWAInstaller: React.FC = () => {
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" /></svg>
             </div>
             <p>2. Choose <b>'Add to Dock'</b> to use as a native app.</p>
+          </div>
+        </>
+      );
+    }
+
+    if (platformInfo.isWindows && platformInfo.isEdge) {
+      return (
+        <>
+          <div className="flex items-start gap-4 text-sm text-slate-600">
+            <div className="w-8 h-8 bg-indigo-50 rounded-lg flex items-center justify-center flex-shrink-0 text-indigo-600 font-bold">
+              <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 16 16"><path d="M9.5 13a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0zm0-5a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0zm0-5a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0z"/></svg>
+            </div>
+            <p>1. Click the <b>Settings (...)</b> button in Edge.</p>
+          </div>
+          <div className="flex items-start gap-4 text-sm text-slate-600">
+            <div className="w-8 h-8 bg-indigo-50 rounded-lg flex items-center justify-center flex-shrink-0 text-indigo-600">
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16M4 18h16" /></svg>
+            </div>
+            <p>2. Go to <b>Apps</b> &gt; <b>Install this site as an app</b>.</p>
+          </div>
+        </>
+      );
+    }
+
+    if (platformInfo.isWindows && platformInfo.isChrome) {
+      return (
+        <>
+          <div className="flex items-start gap-4 text-sm text-slate-600">
+            <div className="w-8 h-8 bg-indigo-50 rounded-lg flex items-center justify-center flex-shrink-0 text-indigo-600 font-bold">
+              <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 16 16"><path d="M9.5 13a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0zm0-5a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0zm0-5a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0z"/></svg>
+            </div>
+            <p>1. Click the <b>Three Dots (...)</b> menu in Chrome.</p>
+          </div>
+          <div className="flex items-start gap-4 text-sm text-slate-600">
+            <div className="w-8 h-8 bg-indigo-50 rounded-lg flex items-center justify-center flex-shrink-0 text-indigo-600 font-bold">
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
+            </div>
+            <p>2. Select <b>Save and Share</b> &gt; <b>Install Linguist Pro</b>.</p>
           </div>
         </>
       );
