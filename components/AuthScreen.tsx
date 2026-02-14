@@ -7,7 +7,7 @@ interface AuthScreenProps {
   view: AuthView;
   setView: (view: AuthView) => void;
   onTryAsGuest: () => void;
-  deferredPrompt?: any;
+  deferredPrompt?: boolean;
   isStandalone?: boolean;
   isIOS?: boolean;
   onInstallApp?: () => void;
@@ -50,14 +50,6 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ view, setView, onTryAsGuest, de
       setError(err.message || 'An unexpected error occurred');
     } finally {
       setLoading(false);
-    }
-  };
-
-  const handleInstallClick = () => {
-    if (deferredPrompt) {
-      onInstallApp?.();
-    } else {
-      setShowGuide(true);
     }
   };
 
@@ -255,11 +247,11 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ view, setView, onTryAsGuest, de
                 <p>Already part of our community? <button onClick={() => setView('login')} className="font-bold text-indigo-600 hover:text-indigo-700 hover:underline">Log in</button></p>
               )}
               
-              {/* Custom Install Button - Persistent below Sign up free */}
+              {/* Custom Install Button - UNCONDITIONAL when not standalone */}
               {!isStandalone && (
                 <div className="mt-6 pt-6 border-t border-slate-100 flex flex-col items-center animate-in fade-in slide-in-from-top-2 duration-500">
                   <button 
-                    onClick={handleInstallClick}
+                    onClick={onInstallApp}
                     className="flex items-center gap-3 bg-slate-50 hover:bg-indigo-50 border border-slate-200 hover:border-indigo-200 text-slate-700 hover:text-indigo-700 px-8 py-3 rounded-2xl transition-all active:scale-95 group shadow-sm hover:shadow-md"
                   >
                     <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center shadow-sm group-hover:shadow transition-shadow">
@@ -269,10 +261,10 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ view, setView, onTryAsGuest, de
                     </div>
                     <div className="text-left">
                       <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 group-hover:text-indigo-400 leading-none mb-1">Native App Experience</p>
-                      <p className="text-sm font-black leading-none">Download App</p>
+                      <p className="text-sm font-black leading-none">Download App {deferredPrompt && <span className="ml-1 text-[10px] bg-indigo-600 text-white px-1.5 py-0.5 rounded-full">!</span>}</p>
                     </div>
                   </button>
-                  <p className="mt-3 text-[10px] text-slate-400 font-medium">Fast, secure, and available offline</p>
+                  <p className="mt-3 text-[10px] text-slate-400 font-medium text-center">Pin to taskbar or home screen for the full experience</p>
                 </div>
               )}
             </div>

@@ -6,12 +6,21 @@ import AuthScreen from './components/AuthScreen';
 import Dashboard from './components/Dashboard';
 import { AuthView } from './types';
 
+// Capture the PWA event as early as possible, outside the React render cycle
+let caughtDeferredPrompt: any = null;
+window.addEventListener('beforeinstallprompt', (e) => {
+  e.preventDefault();
+  caughtDeferredPrompt = e;
+  // Dispatch a custom event so React components know the prompt is ready
+  window.dispatchEvent(new CustomEvent('pwa-prompt-ready'));
+});
+
 const App: React.FC = () => {
   const [session, setSession] = useState<any>(null);
   const [isGuest, setIsGuest] = useState(false);
   const [loading, setLoading] = useState(true);
   const [currentView, setCurrentView] = useState<AuthView>('login');
-  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
+  const [hasPrompt, setHasPrompt] = useState(false);
   const [isStandalone, setIsStandalone] = useState(false);
   const [isIOS, setIsIOS] = useState(false);
   
@@ -50,16 +59,11 @@ const App: React.FC = () => {
     setIsStandalone(!!standalone);
     setIsIOS(/iphone|ipad|ipod/.test(window.navigator.userAgent.toLowerCase()));
 
-    // PWA Install logic
-    const handleBeforeInstallPrompt = (e: Event) => {
-      // Prevent the mini-infobar from appearing on mobile
-      e.preventDefault();
-      // Stash the event so it can be triggered later.
-      console.log('PWA: beforeinstallprompt event captured');
-      setDeferredPrompt(e);
-    };
+    // Check if prompt was caught before component mount
+    if (caughtDeferredPrompt) setHasPrompt(true);
 
-    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+    const onPromptReady = () => setHasPrompt(true);
+    window.addEventListener('pwa-prompt-ready', onPromptReady);
 
     if (configMissing) {
       setLoading(false);
@@ -90,26 +94,27 @@ const App: React.FC = () => {
 
     return () => {
       subscription.unsubscribe();
-      window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+      window.removeEventListener('pwa-prompt-ready', onPromptReady);
     };
   }, [configMissing]);
 
   const handleInstallApp = useCallback(async () => {
-    if (deferredPrompt) {
-      // Show the install prompt
-      deferredPrompt.prompt();
-      // Wait for the user to respond to the prompt
-      const { outcome } = await deferredPrompt.userChoice;
-      console.log(`PWA: User response to install prompt: ${outcome}`);
-      // We've used the prompt, and can't use it again, throw it away
-      setDeferredPrompt(null);
+    if (caughtDeferredPrompt) {
+      caughtDeferredPrompt.prompt();
+      const { outcome } = await caughtDeferredPrompt.userChoice;
+      console.log(`PWA: User choice: ${outcome}`);
+      if (outcome === 'accepted') {
+        caughtDeferredPrompt = null;
+        setHasPrompt(false);
+      }
     } else if (isIOS && !isStandalone) {
-      // iOS doesn't support beforeinstallprompt, show the guide
       window.dispatchEvent(new CustomEvent('show-pwa-guide'));
     } else {
-      console.log('PWA: Install not available. Standard reasons: Already installed, not HTTPS, or browser not supported.');
+      // If no prompt is available yet (standard for some browsers/settings), 
+      // we show the manual guide as a fallback so the button isn't "broken"
+      window.dispatchEvent(new CustomEvent('show-pwa-guide'));
     }
-  }, [deferredPrompt, isIOS, isStandalone]);
+  }, [isIOS, isStandalone]);
 
   if (loading) {
     return (
@@ -235,7 +240,7 @@ const App: React.FC = () => {
           session={session} 
           isGuest={isGuest} 
           onExitGuest={handleExitGuest}
-          deferredPrompt={deferredPrompt}
+          deferredPrompt={hasPrompt}
           isStandalone={isStandalone}
           isIOS={isIOS}
           onInstallApp={handleInstallApp}
@@ -245,7 +250,7 @@ const App: React.FC = () => {
           view={currentView} 
           setView={setCurrentView} 
           onTryAsGuest={handleTryAsGuest}
-          deferredPrompt={deferredPrompt}
+          deferredPrompt={hasPrompt}
           isStandalone={isStandalone}
           isIOS={isIOS}
           onInstallApp={handleInstallApp}
