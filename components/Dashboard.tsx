@@ -26,6 +26,8 @@ const QUIZ_DURATION = 10; // 10 seconds
 const Dashboard: React.FC<DashboardProps> = ({ session, isGuest, onExitGuest }) => {
   const [signingOut, setSigningOut] = useState(false);
   const [currentTab, setCurrentTab] = useState<DashboardView>('search');
+  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
+  const [isStandalone, setIsStandalone] = useState(false);
   
   // Search State
   const [searchWord, setSearchWord] = useState('');
@@ -64,14 +66,36 @@ const Dashboard: React.FC<DashboardProps> = ({ session, isGuest, onExitGuest }) 
   const currentQuizLanguage = LANGUAGES.find(l => l.code === quizTargetLang);
 
   useEffect(() => {
+    // Check if running in standalone mode
+    const standalone = window.matchMedia('(display-mode: standalone)').matches || (window.navigator as any).standalone;
+    setIsStandalone(!!standalone);
+
+    // Listen for PWA installation prompt
+    const handleBeforeInstallPrompt = (e: any) => {
+      e.preventDefault();
+      setDeferredPrompt(e);
+    };
+
+    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+
     if (!isGuest && supabase) {
       fetchFavorites();
     }
     return () => {
       stopRecording();
       if (timerIntervalRef.current) clearInterval(timerIntervalRef.current);
+      window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
     };
   }, [user.id, isGuest]);
+
+  const handleInstallClick = async () => {
+    if (!deferredPrompt) return;
+    deferredPrompt.prompt();
+    const { outcome } = await deferredPrompt.userChoice;
+    if (outcome === 'accepted') {
+      setDeferredPrompt(null);
+    }
+  };
 
   const fetchFavorites = async () => {
     if (!supabase) return;
@@ -501,12 +525,8 @@ const Dashboard: React.FC<DashboardProps> = ({ session, isGuest, onExitGuest }) 
           <div className="flex justify-between h-14">
             <div className="flex items-center gap-6">
               <div className="flex items-center gap-2 group cursor-pointer" onClick={() => { setCurrentTab('search'); setSelectedFavorite(null); }}>
-                <div className="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center shadow-md transition-transform group-hover:scale-105 active:scale-95">
-                  <svg className="w-5 h-5 text-white" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <path d="M12 21C16.9706 21 21 16.9706 21 12C21 7.02944 16.9706 3 12 3C7.02944 3 3 7.02944 3 12C3 13.4876 3.36033 14.8911 4 16.1247L3 21L7.87528 20C9.10893 20.6397 10.5124 21 12 21Z" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
-                    <path d="M12 3C12 3 15 7 15 12C15 17 12 21 12 21" stroke="currentColor" strokeWidth="1.5" strokeOpacity="0.4" strokeLinecap="round"/>
-                    <path d="M12 3C12 3 9 7 9 12C9 17 12 21 12 21" stroke="currentColor" strokeWidth="1.5" strokeOpacity="0.4" strokeLinecap="round"/>
-                  </svg>
+                <div className="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center shadow-md transition-transform group-hover:scale-105 active:scale-95 overflow-hidden">
+                   <img src="https://cdn-icons-png.flaticon.com/512/3898/3898082.png" alt="Logo" className="w-5 h-5" />
                 </div>
                 <span className="font-black text-[#1C1E21] text-lg tracking-tighter hidden sm:block">Linguist<span className="text-indigo-600">Pro</span></span>
               </div>
@@ -532,6 +552,15 @@ const Dashboard: React.FC<DashboardProps> = ({ session, isGuest, onExitGuest }) 
               </div>
             </div>
             <div className="flex items-center gap-2">
+              {deferredPrompt && !isStandalone && (
+                <button 
+                  onClick={handleInstallClick}
+                  className="hidden sm:flex items-center gap-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-600 px-3 py-1.5 rounded-full text-xs font-bold transition-all border border-indigo-100 active:scale-95"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
+                  Install App
+                </button>
+              )}
               <div className="flex items-center gap-3 bg-slate-50 px-3 py-1.5 rounded-full border border-slate-100">
                 <img className="h-7 w-7 rounded-full bg-white" src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${user.id}`} alt="Avatar" />
                 <span className="text-xs font-semibold text-slate-600 truncate max-w-[100px] hidden sm:block">{user.email}</span>

@@ -53,16 +53,8 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ view, setView, onTryAsGuest }) 
           
           <div className="relative z-10">
             <div className="flex items-center gap-3 mb-12">
-              <div className="w-12 h-12 bg-gradient-to-tr from-indigo-500 to-violet-400 rounded-2xl shadow-xl flex items-center justify-center relative">
-                <svg className="w-7 h-7 text-white" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <path d="M12 21C16.9706 21 21 16.9706 21 12C21 7.02944 16.9706 3 12 3C7.02944 3 3 7.02944 3 12C3 13.4876 3.36033 14.8911 4 16.1247L3 21L7.87528 20C9.10893 20.6397 10.5124 21 12 21Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                  <path d="M12 3C12 3 15 7 15 12C15 17 12 21 12 21" stroke="currentColor" strokeWidth="1.5" strokeOpacity="0.5" strokeLinecap="round"/>
-                  <path d="M12 3C12 3 9 7 9 12C9 17 12 21 12 21" stroke="currentColor" strokeWidth="1.5" strokeOpacity="0.5" strokeLinecap="round"/>
-                  <path d="M3.5 12H20.5" stroke="currentColor" strokeWidth="1.5" strokeOpacity="0.5" strokeLinecap="round"/>
-                </svg>
-                <div className="absolute -top-1 -right-1 w-5 h-5 bg-white rounded-full flex items-center justify-center shadow-md">
-                   <svg className="w-3 h-3 text-indigo-600" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2L14.4 9.6L22 12L14.4 14.4L12 22L9.6 14.4L2 12L9.6 9.6L12 2Z"/></svg>
-                </div>
+              <div className="w-12 h-12 bg-white rounded-2xl shadow-xl flex items-center justify-center relative overflow-hidden">
+                 <img src="https://cdn-icons-png.flaticon.com/512/3898/3898082.png" alt="Logo" className="w-7 h-7" />
               </div>
               <span className="text-2xl font-black tracking-tighter">Linguist<span className="text-indigo-200">Pro</span></span>
             </div>
