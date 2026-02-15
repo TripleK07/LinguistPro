@@ -73,24 +73,34 @@ export async function lookupWord(word: string, targetLanguage: string) {
   });
 }
 
-export async function getQuizWord(targetLanguage: string, excludeWords: string[] = []) {
+export async function getQuizWord(targetLanguage: string, category: string, level: string, excludeWords: string[] = []) {
   return callWithRetry(async () => {
     const ai = getAI();
-    const excludeText = excludeWords.length > 0 ? `DO NOT use any of these words: ${excludeWords.join(', ')}.` : '';
+    const excludeText = excludeWords.length > 0 ? `Exclude: ${excludeWords.join(', ')}.` : '';
+    
+    let difficultyContext = "";
+    switch(level.toLowerCase()) {
+      case 'basic': difficultyContext = "Simple, common everyday words."; break;
+      case 'intermediate': difficultyContext = "Standard conversational words."; break;
+      case 'advance': difficultyContext = "Complex academic or professional vocabulary."; break;
+      case 'expert': difficultyContext = "Rare, obscure, or highly specialized words."; break;
+    }
+
     const response = await ai.models.generateContent({
       model: "gemini-3-flash-preview",
-      contents: `Generate a unique, common, and useful word in ${targetLanguage} and its English translation for a vocabulary quiz.
-      Avoid very basic words like "hello", "yes", or "no" unless they are part of a more complex set. 
-      Pick a word that is interesting for an intermediate learner.
-      ${excludeText}
-      Randomness seed: ${Math.random()} (Time: ${Date.now()})`,
+      contents: `Quickly generate ONE pair: word in ${targetLanguage} and its English translation.
+      Category: ${category}
+      Difficulty: ${level}
+      Context: ${difficultyContext}
+      ${excludeText}`,
       config: {
+        thinkingConfig: { thinkingBudget: 0 }, // Disable thinking for maximum speed
         responseMimeType: "application/json",
         responseSchema: {
           type: Type.OBJECT,
           properties: {
-            targetWord: { type: Type.STRING, description: "The word in the foreign language" },
-            englishTranslation: { type: Type.STRING, description: "The single-word English translation" }
+            targetWord: { type: Type.STRING },
+            englishTranslation: { type: Type.STRING }
           },
           required: ["targetWord", "englishTranslation"]
         }
