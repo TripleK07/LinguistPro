@@ -38,6 +38,9 @@ const Dashboard: React.FC<DashboardProps> = ({ session, isGuest, onExitGuest, de
   // Search State
   const [searchWord, setSearchWord] = useState('');
   const [targetLang, setTargetLang] = useState('Myanmar');
+  const [isLangMenuOpen, setIsLangMenuOpen] = useState(false);
+  const langMenuRef = useRef<HTMLDivElement>(null);
+
   const [loading, setLoading] = useState(false);
   const [playingAudio, setPlayingAudio] = useState(false);
   const [isListening, setIsListening] = useState(false);
@@ -48,6 +51,9 @@ const Dashboard: React.FC<DashboardProps> = ({ session, isGuest, onExitGuest, de
   
   // Quiz State
   const [quizTargetLang, setQuizTargetLang] = useState('Spanish');
+  const [isQuizLangMenuOpen, setIsQuizLangMenuOpen] = useState(false);
+  const quizLangMenuRef = useRef<HTMLDivElement>(null);
+
   const [quizWord, setQuizWord] = useState<{ targetWord: string, englishTranslation: string } | null>(null);
   const [quizInput, setQuizInput] = useState('');
   const [quizTimer, setQuizTimer] = useState(QUIZ_DURATION);
@@ -75,6 +81,17 @@ const Dashboard: React.FC<DashboardProps> = ({ session, isGuest, onExitGuest, de
     const handleGuideRequest = () => setShowIOSGuide(true);
     window.addEventListener('show-pwa-guide', handleGuideRequest);
     
+    // Close menus on click outside
+    const handleClickOutside = (event: MouseEvent) => {
+      if (langMenuRef.current && !langMenuRef.current.contains(event.target as Node)) {
+        setIsLangMenuOpen(false);
+      }
+      if (quizLangMenuRef.current && !quizLangMenuRef.current.contains(event.target as Node)) {
+        setIsQuizLangMenuOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    
     if (!isGuest && supabase) {
       fetchFavorites();
     }
@@ -82,6 +99,7 @@ const Dashboard: React.FC<DashboardProps> = ({ session, isGuest, onExitGuest, de
       stopRecording();
       if (timerIntervalRef.current) clearInterval(timerIntervalRef.current);
       window.removeEventListener('show-pwa-guide', handleGuideRequest);
+      document.removeEventListener('mousedown', handleClickOutside);
     };
   }, [user.id, isGuest]);
 
@@ -110,16 +128,6 @@ const Dashboard: React.FC<DashboardProps> = ({ session, isGuest, onExitGuest, de
       setError("Free API quota exceeded. Please select your own API key to continue.");
     } else {
       setError(err.message || "An unexpected error occurred. Please try again.");
-    }
-  };
-
-  const handleSelectApiKey = async () => {
-    try {
-      await (window as any).aistudio.openSelectKey();
-      setIsQuotaExceeded(false);
-      setError(null);
-    } catch (err) {
-      console.error("Failed to open key selector", err);
     }
   };
 
@@ -448,47 +456,7 @@ const Dashboard: React.FC<DashboardProps> = ({ session, isGuest, onExitGuest, de
         </div>
       </nav>
 
-      {/* iOS Install Guide Modal */}
-      {showIOSGuide && (
-        <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-300">
-          <div className="w-full max-w-sm bg-white rounded-3xl shadow-2xl p-8 animate-in slide-in-from-bottom-10 duration-500">
-            <div className="flex justify-between items-start mb-6">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-indigo-50 rounded-xl flex items-center justify-center text-indigo-600">
-                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
-                </div>
-                <h3 className="text-xl font-bold text-slate-800">Install Linguist</h3>
-              </div>
-              <button onClick={() => setShowIOSGuide(false)} className="text-slate-400 hover:text-slate-600 transition-colors">
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg>
-              </button>
-            </div>
-            <div className="space-y-6 mb-8">
-              <div className="flex items-start gap-4">
-                <div className="w-8 h-8 bg-slate-100 rounded-lg flex items-center justify-center flex-shrink-0 font-bold text-slate-600 text-sm">1</div>
-                <p className="text-slate-600 text-sm leading-relaxed">Tap the <b>Share</b> button in Safari's bottom toolbar.</p>
-              </div>
-              <div className="flex items-start gap-4">
-                <div className="w-8 h-8 bg-slate-100 rounded-lg flex items-center justify-center flex-shrink-0 font-bold text-slate-600 text-sm">2</div>
-                <p className="text-slate-600 text-sm leading-relaxed">Scroll down and select <b>Add to Home Screen</b>.</p>
-              </div>
-            </div>
-            <button onClick={() => setShowIOSGuide(false)} className="w-full bg-indigo-600 text-white font-bold py-3.5 rounded-xl shadow-lg shadow-indigo-100 active:scale-95 transition-all">Got it</button>
-          </div>
-        </div>
-      )}
-
       <main className="flex-grow flex flex-col max-w-4xl mx-auto w-full py-8 px-4">
-        {/* Guest Banner */}
-        {isGuest && currentTab === 'search' && (
-          <div className="mb-6 p-4 bg-indigo-600 text-white rounded-2xl shadow-lg flex items-center justify-between animate-in slide-in-from-top-4 duration-500">
-            <div className="flex items-center gap-4">
-              <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center"><svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2L14.4 9.6L22 12L14.4 14.4L12 22L9.6 14.4L2 12L9.6 9.6L12 2Z"/></svg></div>
-              <div><p className="font-black tracking-tight text-lg">Trial Mode Active</p><p className="text-indigo-100 text-xs font-medium">Create an account to save words!</p></div>
-            </div>
-            <button onClick={() => onExitGuest?.()} className="bg-white text-indigo-600 font-bold px-5 py-2 rounded-xl text-sm shadow-sm transition-transform hover:scale-105 active:scale-95">Sign Up</button>
-          </div>
-        )}
         {currentTab === 'search' ? (
           <>
             <section className="mb-8">
@@ -503,20 +471,50 @@ const Dashboard: React.FC<DashboardProps> = ({ session, isGuest, onExitGuest, de
                       {isTranscribing ? <svg className="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> : <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" /></svg>}
                     </button>
                   </div>
-                  <div className="relative min-w-[180px]">
-                    <select value={targetLang} onChange={(e) => setTargetLang(e.target.value)} className="appearance-none w-full pl-10 pr-10 py-3 rounded-lg border border-slate-200 bg-[#F0F2F5] hover:bg-[#E4E6E9] focus:bg-white focus:border-indigo-600 outline-none transition-all text-[#1C1E21] font-semibold cursor-pointer text-sm">
-                      {LANGUAGES.map(lang => <option key={lang.code} value={lang.code}>{lang.name}</option>)}
-                    </select>
-                    <div className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none flex items-center">
-                      {currentLanguage && (
-                        <img 
-                          src={getFlagUrl(currentLanguage.countryCode)} 
-                          alt={currentLanguage.name} 
-                          className="w-5 h-3.5 object-cover rounded-sm" 
-                        />
-                      )}
-                    </div>
+                  
+                  {/* Custom Language Dropdown (Search) */}
+                  <div className="relative min-w-[200px]" ref={langMenuRef}>
+                    <button 
+                      type="button" 
+                      onClick={() => setIsLangMenuOpen(!isLangMenuOpen)}
+                      className="w-full flex items-center justify-between px-4 py-3 rounded-lg border border-slate-200 bg-[#F0F2F5] hover:bg-[#E4E6E9] focus:bg-white focus:border-indigo-600 transition-all outline-none"
+                    >
+                      <div className="flex items-center gap-2">
+                        {currentLanguage && (
+                          <img 
+                            src={getFlagUrl(currentLanguage.countryCode)} 
+                            alt={currentLanguage.name} 
+                            className="w-5 h-3.5 object-cover rounded-sm" 
+                          />
+                        )}
+                        <span className="font-semibold text-[#1C1E21] text-sm">{currentLanguage?.name}</span>
+                      </div>
+                      <svg className={`w-4 h-4 text-slate-400 transition-transform ${isLangMenuOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" /></svg>
+                    </button>
+
+                    {isLangMenuOpen && (
+                      <div className="absolute top-full left-0 right-0 mt-2 bg-white rounded-xl shadow-xl border border-slate-200 overflow-hidden z-[60] animate-in slide-in-from-top-2 duration-200">
+                        <div className="max-h-60 overflow-y-auto">
+                          {LANGUAGES.map(lang => (
+                            <button
+                              key={lang.code}
+                              type="button"
+                              onClick={() => {
+                                setTargetLang(lang.code);
+                                setIsLangMenuOpen(false);
+                              }}
+                              className={`w-full flex items-center gap-3 px-4 py-3 text-sm font-medium hover:bg-slate-50 transition-colors ${targetLang === lang.code ? 'bg-indigo-50 text-indigo-600' : 'text-slate-700'}`}
+                            >
+                              <img src={getFlagUrl(lang.countryCode)} alt={lang.name} className="w-5 h-3.5 object-cover rounded-sm" />
+                              {lang.name}
+                              {targetLang === lang.code && <svg className="w-4 h-4 ml-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7" /></svg>}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </div>
+
                   <button type="submit" disabled={loading || isTranscribing} className="bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-300 text-white font-bold px-8 py-3 rounded-lg transition-all min-w-[120px]">
                     {loading ? "..." : "Look Up"}
                   </button>
@@ -534,6 +532,144 @@ const Dashboard: React.FC<DashboardProps> = ({ session, isGuest, onExitGuest, de
               {result && !loading && renderResult(result)}
             </div>
           </>
+        ) : currentTab === 'quiz' ? (
+          <div className="flex flex-col gap-6 animate-in fade-in duration-300">
+            <header className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
+              <h1 className="text-2xl font-bold text-[#1C1E21] mb-2">Vocabulary Quiz</h1>
+              <p className="text-slate-500 text-sm mb-6">Test your knowledge. Translate the word shown to English.</p>
+              
+              <div className="flex flex-col sm:flex-row items-end gap-4">
+                <div className="flex-grow">
+                  <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 ml-1">Quiz Language</label>
+                  {/* Custom Language Dropdown (Quiz) */}
+                  <div className="relative" ref={quizLangMenuRef}>
+                    <button 
+                      type="button" 
+                      onClick={() => setIsQuizLangMenuOpen(!isQuizLangMenuOpen)}
+                      className="w-full flex items-center justify-between px-4 py-3 rounded-lg border border-slate-200 bg-[#F0F2F5] hover:bg-[#E4E6E9] focus:bg-white focus:border-indigo-600 transition-all outline-none"
+                    >
+                      <div className="flex items-center gap-2">
+                        {currentQuizLanguage && (
+                          <img 
+                            src={getFlagUrl(currentQuizLanguage.countryCode)} 
+                            alt={currentQuizLanguage.name} 
+                            className="w-5 h-3.5 object-cover rounded-sm" 
+                          />
+                        )}
+                        <span className="font-semibold text-[#1C1E21] text-sm">{currentQuizLanguage?.name}</span>
+                      </div>
+                      <svg className={`w-4 h-4 text-slate-400 transition-transform ${isQuizLangMenuOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" /></svg>
+                    </button>
+
+                    {isQuizLangMenuOpen && (
+                      <div className="absolute top-full left-0 right-0 mt-2 bg-white rounded-xl shadow-xl border border-slate-200 overflow-hidden z-[60] animate-in slide-in-from-top-2 duration-200">
+                        <div className="max-h-60 overflow-y-auto">
+                          {LANGUAGES.map(lang => (
+                            <button
+                              key={lang.code}
+                              type="button"
+                              onClick={() => {
+                                setQuizTargetLang(lang.code);
+                                setIsQuizLangMenuOpen(false);
+                              }}
+                              className={`w-full flex items-center gap-3 px-4 py-3 text-sm font-medium hover:bg-slate-50 transition-colors ${quizTargetLang === lang.code ? 'bg-indigo-50 text-indigo-600' : 'text-slate-700'}`}
+                            >
+                              <img src={getFlagUrl(lang.countryCode)} alt={lang.name} className="w-5 h-3.5 object-cover rounded-sm" />
+                              {lang.name}
+                              {quizTargetLang === lang.code && <svg className="w-4 h-4 ml-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7" /></svg>}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+                <button 
+                  onClick={startNextQuizWord} 
+                  disabled={quizStatus === 'loading' || quizStatus === 'active'}
+                  className="bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-300 text-white font-bold h-[46px] px-8 rounded-lg transition-all shadow-md"
+                >
+                  Start Quiz
+                </button>
+              </div>
+            </header>
+
+            <div className="bg-white p-8 rounded-2xl border-2 border-slate-200 shadow-lg min-h-[400px] flex flex-col items-center justify-center text-center relative overflow-hidden">
+              {quizStatus === 'active' && (
+                <div className="absolute top-0 left-0 h-1.5 bg-indigo-600 transition-all duration-100 ease-linear" style={{ width: `${(quizTimer / QUIZ_DURATION) * 100}%` }}></div>
+              )}
+
+              {quizStatus === 'idle' && (
+                <div className="space-y-4">
+                  <div className="w-20 h-20 bg-indigo-50 text-indigo-600 rounded-3xl flex items-center justify-center mx-auto mb-4">
+                    <svg className="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                  </div>
+                  <h2 className="text-2xl font-black text-slate-800 uppercase tracking-tight">Ready to test?</h2>
+                  <p className="text-slate-500 max-w-xs mx-auto">Click Start Quiz to get a random word from your selected language.</p>
+                </div>
+              )}
+
+              {quizStatus === 'loading' && (
+                <div className="flex flex-col items-center gap-4">
+                  <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-indigo-600"></div>
+                  <p className="text-indigo-600 font-bold animate-pulse">Generating Challenge...</p>
+                </div>
+              )}
+
+              {quizStatus === 'active' && quizWord && (
+                <div className="w-full max-w-sm space-y-8">
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-center gap-2 text-slate-400 font-bold uppercase text-[10px] tracking-widest">
+                      <img src={getFlagUrl(currentQuizLanguage?.countryCode || 'us')} className="w-4 h-3 object-cover rounded-[2px]" />
+                      Translate to English
+                    </div>
+                    <h2 className="text-5xl font-black text-slate-900 capitalize tracking-tight">{quizWord.targetWord}</h2>
+                  </div>
+                  
+                  <form onSubmit={handleQuizSubmit} className="space-y-4">
+                    <input 
+                      autoFocus
+                      type="text" 
+                      value={quizInput}
+                      onChange={(e) => setQuizInput(e.target.value)}
+                      placeholder="Type your answer..." 
+                      className="w-full px-6 py-4 rounded-2xl bg-slate-50 border-2 border-slate-200 focus:bg-white focus:border-indigo-600 outline-none text-center text-xl font-bold transition-all"
+                    />
+                    <button 
+                      type="submit"
+                      className="w-full bg-slate-900 hover:bg-black text-white font-bold py-4 rounded-2xl transition-all shadow-xl active:scale-[0.98]"
+                    >
+                      Check Answer
+                    </button>
+                  </form>
+                  <p className="text-slate-400 font-bold text-xs uppercase tracking-widest">{Math.ceil(quizTimer)} seconds left</p>
+                </div>
+              )}
+
+              {(quizStatus === 'correct' || quizStatus === 'wrong' || quizStatus === 'timeout') && quizWord && (
+                <div className="space-y-6 animate-in zoom-in-95 duration-300">
+                  <div className={`w-24 h-24 rounded-full flex items-center justify-center mx-auto ${quizStatus === 'correct' ? 'bg-emerald-100 text-emerald-600' : 'bg-red-100 text-red-600'}`}>
+                    {quizStatus === 'correct' ? (
+                      <svg className="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7" /></svg>
+                    ) : (
+                      <svg className="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M6 18L18 6M6 6l12 12" /></svg>
+                    )}
+                  </div>
+                  <div>
+                    <h2 className="text-3xl font-black text-slate-800 uppercase tracking-tighter">
+                      {quizStatus === 'correct' ? 'Perfect!' : quizStatus === 'timeout' ? 'Time up!' : 'Not quite!'}
+                    </h2>
+                    <p className="text-slate-500 mt-1">
+                      The translation for <span className="font-bold text-slate-800">"{quizWord.targetWord}"</span> is <span className="font-bold text-indigo-600">"{quizWord.englishTranslation}"</span>
+                    </p>
+                  </div>
+                  <button onClick={startNextQuizWord} className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold px-10 py-4 rounded-2xl shadow-lg transition-all active:scale-95">
+                    Next Challenge
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
         ) : (
           <div className="flex flex-col gap-6">
             {!selectedFavorite ? (
@@ -549,7 +685,7 @@ const Dashboard: React.FC<DashboardProps> = ({ session, isGuest, onExitGuest, de
                 </header>
                 {loadingFavorites ? <div className="space-y-3">{[1, 2, 3].map(i => <div key={i} className="h-16 bg-white rounded-xl border border-slate-200 animate-pulse"></div>)}</div> : (
                   <div className="grid grid-cols-1 gap-2">
-                    {filteredFavorites.map((fav) => {
+                    {filteredFavorites.length > 0 ? filteredFavorites.map((fav) => {
                       const langInfo = LANGUAGES.find(l => l.code === fav.entry.target_lang);
                       return (
                         <div key={fav.id} onClick={() => setSelectedFavorite(fav)} className="group flex items-center justify-between bg-white p-4 rounded-xl border border-slate-200 hover:border-indigo-600 cursor-pointer transition-all">
@@ -567,7 +703,11 @@ const Dashboard: React.FC<DashboardProps> = ({ session, isGuest, onExitGuest, de
                           </div>
                         </div>
                       );
-                    })}
+                    }) : (
+                      <div className="py-20 bg-white rounded-xl border border-slate-200 border-dashed text-center">
+                        <p className="text-slate-400 font-medium">No favorites found matching your search.</p>
+                      </div>
+                    )}
                   </div>
                 )}
               </>
