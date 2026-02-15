@@ -1,6 +1,6 @@
 
 export type AuthView = 'login' | 'signup' | 'forgot-password';
-export type DashboardView = 'search' | 'favorites' | 'quiz';
+export type DashboardView = 'search' | 'favorites' | 'quiz' | 'support';
 
 export interface UserProfile {
   id: string;
@@ -27,7 +27,7 @@ export interface DictionaryEntry {
   definition: string;
   examples: DictionaryExample[];
   synonyms: string[];
-  target_lang?: string; // Track which language it was translated to
+  target_lang?: string; 
 }
 
 export interface Favorite {
@@ -36,4 +36,10 @@ export interface Favorite {
   word: string;
   entry: DictionaryEntry;
   created_at: string;
+}
+
+export interface QuizSettings {
+  lang: string;
+  category: string;
+  level: string;
 }

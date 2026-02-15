@@ -1,23 +1,38 @@
 
-import React, { useState, useEffect } from 'react';
-import { supabase, isSupabaseConfigured, SUPABASE_URL, SUPABASE_ANON_KEY } from './lib/supabase';
+import React, { useState, useEffect, useCallback } from 'react';
+import { supabase, isSupabaseConfigured } from './lib/supabase';
 import { getEnv, setLocalEnv, clearLocalEnv } from './lib/env';
 import AuthScreen from './components/AuthScreen';
 import Dashboard from './components/Dashboard';
 import { AuthView } from './types';
+
+// Simple global variable to hold the install prompt
+let deferredPrompt: any = null;
+
+// Catch the event as soon as possible
+window.addEventListener('beforeinstallprompt', (e) => {
+  // Prevent the mini-infobar from appearing on mobile
+  e.preventDefault();
+  // Stash the event so it can be triggered later
+  deferredPrompt = e;
+  // Let the app know the prompt is ready
+  window.dispatchEvent(new CustomEvent('pwa-prompt-ready'));
+});
 
 const App: React.FC = () => {
   const [session, setSession] = useState<any>(null);
   const [isGuest, setIsGuest] = useState(false);
   const [loading, setLoading] = useState(true);
   const [currentView, setCurrentView] = useState<AuthView>('login');
+  const [isStandalone, setIsStandalone] = useState(false);
+  const [isIOS, setIsIOS] = useState(false);
+  const [hasPrompt, setHasPrompt] = useState(false);
   
   // Local states for manual config form
   const [manualUrl, setManualUrl] = useState('');
   const [manualKey, setManualKey] = useState('');
   const [showManualForm, setShowManualForm] = useState(false);
 
-  // Use the safe utility instead of direct process.env access
   const geminiApiKey = getEnv('API_KEY');
   const configMissing = !isSupabaseConfigured() || !geminiApiKey;
 
@@ -34,7 +49,7 @@ const App: React.FC = () => {
     e.preventDefault();
     if (manualUrl) setLocalEnv('SUPABASE_URL', manualUrl);
     if (manualKey) setLocalEnv('SUPABASE_ANON_KEY', manualKey);
-    window.location.reload(); // Reload to re-initialize supabase client with new env
+    window.location.reload(); 
   };
 
   const handleResetConfig = () => {
@@ -43,6 +58,16 @@ const App: React.FC = () => {
   };
 
   useEffect(() => {
+    // Detect Standalone and iOS
+    const standalone = window.matchMedia('(display-mode: standalone)').matches || (window.navigator as any).standalone;
+    setIsStandalone(!!standalone);
+    setIsIOS(/iphone|ipad|ipod/.test(window.navigator.userAgent.toLowerCase()));
+
+    // Synchronize React state with the global prompt variable
+    const syncPrompt = () => setHasPrompt(!!deferredPrompt);
+    syncPrompt();
+    window.addEventListener('pwa-prompt-ready', syncPrompt);
+
     if (configMissing) {
       setLoading(false);
       return;
@@ -72,8 +97,26 @@ const App: React.FC = () => {
 
     return () => {
       subscription.unsubscribe();
+      window.removeEventListener('pwa-prompt-ready', syncPrompt);
     };
   }, [configMissing]);
+
+  const handleInstallApp = useCallback(async () => {
+    if (deferredPrompt) {
+      // Trigger the native prompt
+      deferredPrompt.prompt();
+      // Wait for the user to respond
+      const { outcome } = await deferredPrompt.userChoice;
+      console.log(`PWA install response: ${outcome}`);
+      if (outcome === 'accepted') {
+        deferredPrompt = null;
+        setHasPrompt(false);
+      }
+    } else {
+      // If no native prompt is available, show the guide
+      window.dispatchEvent(new CustomEvent('show-pwa-guide'));
+    }
+  }, []);
 
   if (loading) {
     return (
@@ -184,7 +227,7 @@ const App: React.FC = () => {
 
           <div className="mt-8 pt-6 border-t border-slate-100">
             <p className="text-[10px] text-slate-400 leading-relaxed text-center italic">
-              Note: This is for local preview convenience. For production, add your variables to the <b>Vercel Project Settings</b>.
+              <b>Pro Tip:</b> In "Preview mode", the browser sandbox often clears <i>localStorage</i> on refresh. For a permanent connection, add your Supabase variables to the <b>Project Environment Variables</b>.
             </p>
           </div>
         </div>
@@ -199,12 +242,20 @@ const App: React.FC = () => {
           session={session} 
           isGuest={isGuest} 
           onExitGuest={handleExitGuest}
+          deferredPrompt={hasPrompt}
+          isStandalone={isStandalone}
+          isIOS={isIOS}
+          onInstallApp={handleInstallApp}
         />
       ) : (
         <AuthScreen 
           view={currentView} 
           setView={setCurrentView} 
           onTryAsGuest={handleTryAsGuest}
+          deferredPrompt={hasPrompt}
+          isStandalone={isStandalone}
+          isIOS={isIOS}
+          onInstallApp={handleInstallApp}
         />
       )}
     </div>
