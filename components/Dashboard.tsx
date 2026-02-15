@@ -15,17 +15,20 @@ interface DashboardProps {
 }
 
 const LANGUAGES = [
-  { code: 'Chinese', name: 'Chinese', flag: '🇨🇳' },
-  { code: 'French', name: 'French', flag: '🇫🇷' },
-  { code: 'German', name: 'German', flag: '🇩🇪' },
-  { code: 'Italian', name: 'Italian', flag: '🇮🇹' },
-  { code: 'Japanese', name: 'Japanese', flag: '🇯🇵' },
-  { code: 'Myanmar', name: 'Myanmar', flag: '🇲🇲' },
-  { code: 'Portuguese', name: 'Portuguese', flag: '🇵🇹' },
-  { code: 'Spanish', name: 'Spanish', flag: '🇪🇸' },
+  { code: 'Chinese', name: 'Chinese', countryCode: 'cn' },
+  { code: 'French', name: 'French', countryCode: 'fr' },
+  { code: 'German', name: 'German', countryCode: 'de' },
+  { code: 'Italian', name: 'Italian', countryCode: 'it' },
+  { code: 'Japanese', name: 'Japanese', countryCode: 'jp' },
+  { code: 'Myanmar', name: 'Myanmar', countryCode: 'mm' },
+  { code: 'Portuguese', name: 'Portuguese', countryCode: 'pt' },
+  { code: 'Spanish', name: 'Spanish', countryCode: 'es' },
 ];
 
 const QUIZ_DURATION = 10;
+
+// Helper to get flag URL
+const getFlagUrl = (countryCode: string) => `https://flagcdn.com/w40/${countryCode.toLowerCase()}.png`;
 
 const Dashboard: React.FC<DashboardProps> = ({ session, isGuest, onExitGuest, deferredPrompt, isStandalone, isIOS, onInstallApp }) => {
   const [signingOut, setSigningOut] = useState(false);
@@ -357,7 +360,13 @@ const Dashboard: React.FC<DashboardProps> = ({ session, isGuest, onExitGuest, de
             </div>
             <div className="bg-[#F0F2F5] px-6 py-4 rounded-xl border border-slate-100 flex flex-col items-center justify-center min-w-[140px]">
               <div className="flex items-center gap-2 mb-0.5">
-                <span className="text-xl">{entryLang?.flag}</span>
+                {entryLang && (
+                  <img 
+                    src={getFlagUrl(entryLang.countryCode)} 
+                    alt={entryLang.name} 
+                    className="w-5 h-3.5 object-cover rounded-sm shadow-sm" 
+                  />
+                )}
                 <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">{entryLang?.name}</span>
               </div>
               <p className="text-2xl font-bold text-[#1C1E21]">{data.translation}</p>
@@ -498,7 +507,15 @@ const Dashboard: React.FC<DashboardProps> = ({ session, isGuest, onExitGuest, de
                     <select value={targetLang} onChange={(e) => setTargetLang(e.target.value)} className="appearance-none w-full pl-10 pr-10 py-3 rounded-lg border border-slate-200 bg-[#F0F2F5] hover:bg-[#E4E6E9] focus:bg-white focus:border-indigo-600 outline-none transition-all text-[#1C1E21] font-semibold cursor-pointer text-sm">
                       {LANGUAGES.map(lang => <option key={lang.code} value={lang.code}>{lang.name}</option>)}
                     </select>
-                    <div className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none text-lg">{currentLanguage?.flag}</div>
+                    <div className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none flex items-center">
+                      {currentLanguage && (
+                        <img 
+                          src={getFlagUrl(currentLanguage.countryCode)} 
+                          alt={currentLanguage.name} 
+                          className="w-5 h-3.5 object-cover rounded-sm" 
+                        />
+                      )}
+                    </div>
                   </div>
                   <button type="submit" disabled={loading || isTranscribing} className="bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-300 text-white font-bold px-8 py-3 rounded-lg transition-all min-w-[120px]">
                     {loading ? "..." : "Look Up"}
@@ -537,7 +554,15 @@ const Dashboard: React.FC<DashboardProps> = ({ session, isGuest, onExitGuest, de
                       return (
                         <div key={fav.id} onClick={() => setSelectedFavorite(fav)} className="group flex items-center justify-between bg-white p-4 rounded-xl border border-slate-200 hover:border-indigo-600 cursor-pointer transition-all">
                           <div className="flex items-center gap-4">
-                            <div className="w-10 h-10 bg-[#F0F2F5] rounded-full flex items-center justify-center text-xl group-hover:bg-[#E7F3FF] transition-colors">{langInfo?.flag || '🌐'}</div>
+                            <div className="w-10 h-10 bg-[#F0F2F5] rounded-full flex items-center justify-center group-hover:bg-[#E7F3FF] transition-colors">
+                              {langInfo && (
+                                <img 
+                                  src={getFlagUrl(langInfo.countryCode)} 
+                                  alt={langInfo.name} 
+                                  className="w-6 h-4 object-cover rounded-sm" 
+                                />
+                              )}
+                            </div>
                             <div><h3 className="font-bold text-[#1C1E21] capitalize text-lg group-hover:text-indigo-600 transition-colors">{fav.word}</h3><p className="text-sm text-slate-500 font-medium">{fav.entry.translation}</p></div>
                           </div>
                         </div>
