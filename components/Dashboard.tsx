@@ -6,6 +6,7 @@ import { DictionaryEntry, DashboardView, Favorite } from '../types';
 import { SearchSection } from './dashboard/SearchSection';
 import { QuizSection } from './dashboard/QuizSection';
 import { FavoritesSection } from './dashboard/FavoritesSection';
+import { SupportSection } from './dashboard/SupportSection';
 
 interface DashboardProps {
   session: any;
@@ -203,7 +204,8 @@ const Dashboard: React.FC<DashboardProps> = ({ session, isGuest, onExitGuest, is
   const navItems = [
     { id: 'search', label: 'Search', icon: <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg> },
     { id: 'favorites', label: 'Favorite', icon: <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" /></svg> },
-    { id: 'quiz', label: 'Quiz', icon: <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg> }
+    { id: 'quiz', label: 'Quiz', icon: <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg> },
+    { id: 'support', label: 'Donate', icon: <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg> }
   ];
 
   return (
@@ -217,7 +219,7 @@ const Dashboard: React.FC<DashboardProps> = ({ session, isGuest, onExitGuest, is
                 <span className="font-black text-slate-900 text-lg tracking-tighter hidden xs:block">Linguist<span className="text-indigo-600">Pro</span></span>
               </div>
               <div className="flex h-full">
-                {navItems.map((item) => (
+                {navItems.filter(item => !(isGuest && item.id === 'support')).map((item) => (
                   <button 
                     key={item.id} 
                     onClick={() => { 
@@ -300,6 +302,8 @@ const Dashboard: React.FC<DashboardProps> = ({ session, isGuest, onExitGuest, is
             languages={LANGUAGES}
           />
         )}
+
+        {currentTab === 'support' && <SupportSection />}
 
         {selectedFavorite && currentTab === 'favorites' && (
           <div className="fixed inset-0 z-[100] bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-300">
