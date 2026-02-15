@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { CustomDropdown } from '../ui/CustomDropdown';
-import { getQuizWord } from '../../lib/gemini';
+import { getQuizQuestions } from '../../lib/gemini';
 
 const LANGUAGES = [
   { id: 'Chinese', label: 'Chinese', countryCode: 'cn' },
@@ -17,9 +17,9 @@ const LANGUAGES = [
 const QUIZ_CATEGORIES = ["Random", "Kitchenwares", "Sports", "Nature", "Technology", "Travel", "Emotions", "Food & Drink", "Animals", "Clothing"].map(c => ({ id: c, label: c }));
 const QUIZ_LEVELS = [
   { id: 'Basic', count: 5, desc: '5 simple words' },
-  { id: 'Intermediate', count: 7, desc: '5-7 common words' },
-  { id: 'Advance', count: 10, desc: '7-10 complex words' },
-  { id: 'Expert', count: 12, desc: '10-12 hardest words' }
+  { id: 'Intermediate', count: 7, desc: '7 common words' },
+  { id: 'Advance', count: 10, desc: '10 complex words' },
+  { id: 'Expert', count: 12, desc: '12 hardest words' }
 ];
 
 const QUIZ_TIMER_MAX = 15;
@@ -34,7 +34,6 @@ export const QuizSection: React.FC = () => {
   const [quizTimer, setQuizTimer] = useState(QUIZ_TIMER_MAX);
   const [lastAnswerStatus, setLastAnswerStatus] = useState<'correct' | 'wrong' | 'timeout'>('correct');
   const [loading, setLoading] = useState(false);
-  const [isFetchingNext, setIsFetchingNext] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const quizTimerRef = useRef<number | null>(null);
 
@@ -60,14 +59,20 @@ export const QuizSection: React.FC = () => {
     setLoading(true);
     setError(null);
     try {
-      const firstWord = await getQuizWord(quizSettings.lang, quizSettings.category, quizSettings.level, []);
-      setQuizQuestions([firstWord]);
+      const questions = await getQuizQuestions(
+        quizSettings.lang, 
+        quizSettings.category, 
+        quizSettings.level, 
+        totalNeeded
+      );
+      setQuizQuestions(questions);
       setCorrectCount(0);
       setCurrentQuestionIdx(0);
+      setQuizInput('');
       setQuizState('active');
       resetTimer();
     } catch (err: any) {
-      setError(err.message || "Failed to start quiz.");
+      setError(err.message || "Failed to load quiz questions.");
     } finally {
       setLoading(false);
     }
@@ -81,32 +86,18 @@ export const QuizSection: React.FC = () => {
     if (isCorrect) setCorrectCount(prev => prev + 1);
     setLastAnswerStatus(isTimeout ? 'timeout' : (isCorrect ? 'correct' : 'wrong'));
     setQuizState('feedback');
-
-    // Auto-transition to results if it was the last question after a brief delay?
-    // User asked for "instead of let user choosing to 'Next Question'".
-    // Let's make the "Next Question" button automatically say "See Results" and use theme color.
   };
 
-  const goToNextQuestion = async () => {
+  const goToNextQuestion = () => {
     if (isLastQuestion) {
       setQuizState('results');
       return;
     }
 
-    setIsFetchingNext(true);
-    try {
-      const exclude = quizQuestions.map(q => q.targetWord);
-      const nextWord = await getQuizWord(quizSettings.lang, quizSettings.category, quizSettings.level, exclude);
-      setQuizQuestions(prev => [...prev, nextWord]);
-      setCurrentQuestionIdx(prev => prev + 1);
-      setQuizInput('');
-      setQuizState('active');
-      resetTimer();
-    } catch (err) {
-      setError("Failed to fetch next word.");
-    } finally {
-      setIsFetchingNext(false);
-    }
+    setCurrentQuestionIdx(prev => prev + 1);
+    setQuizInput('');
+    setQuizState('active');
+    resetTimer();
   };
 
   const quitQuiz = () => {
@@ -124,7 +115,7 @@ export const QuizSection: React.FC = () => {
             <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" /></svg>
           </div>
           <h1 className="text-3xl font-black text-slate-800 tracking-tight">Vocabulary Master</h1>
-          <p className="text-slate-500 mt-2">Configure your challenge and sharpen your skills.</p>
+          <p className="text-slate-500 mt-2">Choose your settings and test your knowledge.</p>
         </div>
 
         {error && <div className="mb-6 p-4 bg-red-50 text-red-600 rounded-xl text-sm font-medium">{error}</div>}
@@ -163,7 +154,7 @@ export const QuizSection: React.FC = () => {
         <button 
           onClick={startQuiz} 
           disabled={loading} 
-          className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-black py-5 rounded-2xl shadow-xl shadow-indigo-200 active:scale-[0.98] transition-all flex items-center justify-center gap-3"
+          className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-black py-5 rounded-3xl shadow-xl shadow-indigo-100 active:scale-[0.98] transition-all flex items-center justify-center gap-3"
         >
           {loading ? <svg className="animate-spin h-5 w-5 text-white" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> : "Start Challenge"}
         </button>
@@ -208,10 +199,9 @@ export const QuizSection: React.FC = () => {
               <button onClick={quitQuiz} className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-500 font-bold py-4 rounded-xl transition-all">Give up</button>
               <button 
                 onClick={goToNextQuestion} 
-                disabled={isFetchingNext} 
                 className="flex-[2] bg-indigo-600 hover:bg-indigo-700 text-white font-black py-4 rounded-xl shadow-xl active:scale-95 transition-all flex items-center justify-center"
               >
-                {isFetchingNext ? <svg className="animate-spin h-5 w-5 text-white" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> : (isLastQuestion ? "See Results" : "Next Question")}
+                {isLastQuestion ? "See Results" : "Next Question"}
               </button>
             </div>
           </div>

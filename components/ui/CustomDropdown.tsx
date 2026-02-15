@@ -40,16 +40,16 @@ export const CustomDropdown: React.FC<CustomDropdownProps> = ({ options, value, 
         <button
           type="button"
           onClick={() => setIsOpen(!isOpen)}
-          className="w-full flex items-center justify-between px-4 py-3 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 transition-all outline-none focus:ring-2 focus:ring-indigo-100 text-left"
+          className="w-full flex items-center justify-between px-4 h-[54px] rounded-2xl border border-slate-200 bg-slate-50 hover:bg-slate-100 transition-all outline-none focus:ring-2 focus:ring-indigo-100 text-left"
         >
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 overflow-hidden">
             {selectedOption.countryCode && (
-              <img src={getFlagUrl(selectedOption.countryCode)} className="w-5 h-3.5 object-cover rounded-sm shadow-sm" alt="" />
+              <img src={getFlagUrl(selectedOption.countryCode)} className="w-5 h-3.5 object-cover rounded-sm shadow-sm flex-shrink-0" alt="" />
             )}
-            {icon && !selectedOption.countryCode && <span className="text-slate-400">{icon}</span>}
+            {icon && !selectedOption.countryCode && <span className="text-slate-400 flex-shrink-0">{icon}</span>}
             <span className="font-bold text-slate-700 text-sm truncate">{selectedOption.label}</span>
           </div>
-          <svg className={`w-4 h-4 text-slate-400 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg className={`w-4 h-4 text-slate-400 flex-shrink-0 transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path d="M19 9l-7 7-7-7" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
           </svg>
         </button>

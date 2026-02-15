@@ -73,10 +73,9 @@ export async function lookupWord(word: string, targetLanguage: string) {
   });
 }
 
-export async function getQuizWord(targetLanguage: string, category: string, level: string, excludeWords: string[] = []) {
+export async function getQuizQuestions(targetLanguage: string, category: string, level: string, count: number) {
   return callWithRetry(async () => {
     const ai = getAI();
-    const excludeText = excludeWords.length > 0 ? `Exclude: ${excludeWords.join(', ')}.` : '';
     
     let difficultyContext = "";
     switch(level.toLowerCase()) {
@@ -88,21 +87,24 @@ export async function getQuizWord(targetLanguage: string, category: string, leve
 
     const response = await ai.models.generateContent({
       model: "gemini-3-flash-preview",
-      contents: `Quickly generate ONE pair: word in ${targetLanguage} and its English translation.
+      contents: `Generate ${count} vocabulary question pairs for a language quiz.
+      Target Language: ${targetLanguage}
       Category: ${category}
       Difficulty: ${level}
-      Context: ${difficultyContext}
-      ${excludeText}`,
+      Context: ${difficultyContext}`,
       config: {
-        thinkingConfig: { thinkingBudget: 0 }, // Disable thinking for maximum speed
+        thinkingConfig: { thinkingBudget: 0 },
         responseMimeType: "application/json",
         responseSchema: {
-          type: Type.OBJECT,
-          properties: {
-            targetWord: { type: Type.STRING },
-            englishTranslation: { type: Type.STRING }
-          },
-          required: ["targetWord", "englishTranslation"]
+          type: Type.ARRAY,
+          items: {
+            type: Type.OBJECT,
+            properties: {
+              targetWord: { type: Type.STRING },
+              englishTranslation: { type: Type.STRING }
+            },
+            required: ["targetWord", "englishTranslation"]
+          }
         }
       }
     });
