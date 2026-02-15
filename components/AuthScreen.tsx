@@ -252,19 +252,29 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ view, setView, onTryAsGuest, de
                 <div className="mt-6 pt-6 border-t border-slate-100 flex flex-col items-center animate-in fade-in slide-in-from-top-2 duration-500">
                   <button 
                     onClick={onInstallApp}
-                    className="flex items-center gap-3 bg-slate-50 hover:bg-indigo-50 border border-slate-200 hover:border-indigo-200 text-slate-700 hover:text-indigo-700 px-8 py-3 rounded-2xl transition-all active:scale-95 group shadow-sm hover:shadow-md"
+                    className="flex items-center gap-3 bg-slate-50 hover:bg-indigo-50 border border-slate-200 hover:border-indigo-200 text-slate-700 hover:text-indigo-700 px-8 py-3 rounded-2xl transition-all active:scale-95 group shadow-sm hover:shadow-md relative overflow-hidden"
                   >
                     <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center shadow-sm group-hover:shadow transition-shadow">
-                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <svg className={`w-5 h-5 ${deferredPrompt ? 'text-indigo-600 animate-bounce' : 'text-slate-500'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
                       </svg>
                     </div>
                     <div className="text-left">
                       <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 group-hover:text-indigo-400 leading-none mb-1">Native App Experience</p>
-                      <p className="text-sm font-black leading-none">Download App {deferredPrompt && <span className="ml-1 text-[10px] bg-indigo-600 text-white px-1.5 py-0.5 rounded-full">!</span>}</p>
+                      <p className="text-sm font-black leading-none flex items-center gap-1.5">
+                        Download App
+                        {deferredPrompt && (
+                          <span className="flex h-2 w-2 relative">
+                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-indigo-400 opacity-75"></span>
+                            <span className="relative inline-flex rounded-full h-2 w-2 bg-indigo-500"></span>
+                          </span>
+                        )}
+                      </p>
                     </div>
                   </button>
-                  <p className="mt-3 text-[10px] text-slate-400 font-medium text-center">Pin to taskbar or home screen for the full experience</p>
+                  <p className="mt-3 text-[10px] text-slate-400 font-medium text-center max-w-[200px]">
+                    Install for offline access and better performance
+                  </p>
                 </div>
               )}
             </div>

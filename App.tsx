@@ -6,12 +6,16 @@ import AuthScreen from './components/AuthScreen';
 import Dashboard from './components/Dashboard';
 import { AuthView } from './types';
 
-// Capture the PWA event as early as possible, outside the React render cycle
-let caughtDeferredPrompt: any = null;
+// Simple global variable to hold the install prompt
+let deferredPrompt: any = null;
+
+// Catch the event as soon as possible
 window.addEventListener('beforeinstallprompt', (e) => {
+  // Prevent the mini-infobar from appearing on mobile
   e.preventDefault();
-  caughtDeferredPrompt = e;
-  // Dispatch a custom event so React components know the prompt is ready
+  // Stash the event so it can be triggered later
+  deferredPrompt = e;
+  // Let the app know the prompt is ready
   window.dispatchEvent(new CustomEvent('pwa-prompt-ready'));
 });
 
@@ -20,9 +24,9 @@ const App: React.FC = () => {
   const [isGuest, setIsGuest] = useState(false);
   const [loading, setLoading] = useState(true);
   const [currentView, setCurrentView] = useState<AuthView>('login');
-  const [hasPrompt, setHasPrompt] = useState(false);
   const [isStandalone, setIsStandalone] = useState(false);
   const [isIOS, setIsIOS] = useState(false);
+  const [hasPrompt, setHasPrompt] = useState(false);
   
   // Local states for manual config form
   const [manualUrl, setManualUrl] = useState('');
@@ -59,11 +63,10 @@ const App: React.FC = () => {
     setIsStandalone(!!standalone);
     setIsIOS(/iphone|ipad|ipod/.test(window.navigator.userAgent.toLowerCase()));
 
-    // Check if prompt was caught before component mount
-    if (caughtDeferredPrompt) setHasPrompt(true);
-
-    const onPromptReady = () => setHasPrompt(true);
-    window.addEventListener('pwa-prompt-ready', onPromptReady);
+    // Synchronize React state with the global prompt variable
+    const syncPrompt = () => setHasPrompt(!!deferredPrompt);
+    syncPrompt();
+    window.addEventListener('pwa-prompt-ready', syncPrompt);
 
     if (configMissing) {
       setLoading(false);
@@ -94,27 +97,26 @@ const App: React.FC = () => {
 
     return () => {
       subscription.unsubscribe();
-      window.removeEventListener('pwa-prompt-ready', onPromptReady);
+      window.removeEventListener('pwa-prompt-ready', syncPrompt);
     };
   }, [configMissing]);
 
   const handleInstallApp = useCallback(async () => {
-    if (caughtDeferredPrompt) {
-      caughtDeferredPrompt.prompt();
-      const { outcome } = await caughtDeferredPrompt.userChoice;
-      console.log(`PWA: User choice: ${outcome}`);
+    if (deferredPrompt) {
+      // Trigger the native prompt
+      deferredPrompt.prompt();
+      // Wait for the user to respond
+      const { outcome } = await deferredPrompt.userChoice;
+      console.log(`PWA install response: ${outcome}`);
       if (outcome === 'accepted') {
-        caughtDeferredPrompt = null;
+        deferredPrompt = null;
         setHasPrompt(false);
       }
-    } else if (isIOS && !isStandalone) {
-      window.dispatchEvent(new CustomEvent('show-pwa-guide'));
     } else {
-      // If no prompt is available yet (standard for some browsers/settings), 
-      // we show the manual guide as a fallback so the button isn't "broken"
+      // If no native prompt is available, show the guide
       window.dispatchEvent(new CustomEvent('show-pwa-guide'));
     }
-  }, [isIOS, isStandalone]);
+  }, []);
 
   if (loading) {
     return (
