@@ -36,10 +36,10 @@ export async function lookupWord(word: string, targetLanguage: string) {
     const ai = getAI();
     const response = await ai.models.generateContent({
       model: "gemini-3-flash-preview",
-      contents: `Look up the English word "${word}" and translate it to ${targetLanguage}. 
-      Provide phonetics (IPA), a clear definition, 3 usage examples, and 5 synonyms.
-      IMPORTANT: For each example, provide both the original English sentence and its translation in ${targetLanguage}.`,
+      contents: `Look up "${word}" and translate it to ${targetLanguage}. Provide IPA, definition, 3 examples, and 5 synonyms.`,
       config: {
+        systemInstruction: "You are a high-speed, accurate dictionary. Provide precise translations and linguistic data in JSON format.",
+        thinkingConfig: { thinkingBudget: 0 },
         responseMimeType: "application/json",
         responseSchema: {
           type: Type.OBJECT,
@@ -129,6 +129,9 @@ export async function transcribeAudio(base64Audio: string, mimeType: string) {
           { text: "Transcribe the spoken audio into a single English word for a dictionary search. Output ONLY the word, nothing else. If multiple words are spoken, output the most likely single search term." },
         ],
       },
+      config: {
+        thinkingConfig: { thinkingBudget: 0 }
+      }
     });
 
     return response.text?.trim() || "";

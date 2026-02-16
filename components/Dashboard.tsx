@@ -88,7 +88,11 @@ const Dashboard: React.FC<DashboardProps> = ({ session, isGuest, onExitGuest, is
     try {
       const data = await lookupWord(searchWord, targetLang);
       setSearchResult({ ...data, target_lang: targetLang });
-    } catch (err) { console.error(err); } finally { setTimeout(() => setLoadingSearch(false), 500); }
+    } catch (err) { 
+      console.error(err); 
+    } finally { 
+      setLoadingSearch(false);
+    }
   };
 
   const playPronunciation = async (word: string) => {
