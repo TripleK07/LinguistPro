@@ -23,19 +23,26 @@ async function callWithRetry<T>(fn: () => Promise<T>, maxRetries = 3): Promise<T
   return await fn();
 }
 
+let aiInstance: GoogleGenAI | null = null;
+
 /**
- * Creates a fresh AI instance using safe environment lookup
+ * Creates or retrieves a singleton AI instance using safe environment lookup
  */
 function getAI() {
-  const apiKey = getEnv('API_KEY');
-  return new GoogleGenAI({ apiKey });
+  if (!aiInstance) {
+    const apiKey = getEnv('API_KEY');
+    if (!apiKey) return null;
+    aiInstance = new GoogleGenAI({ apiKey });
+  }
+  return aiInstance;
 }
 
 export async function lookupWord(word: string, targetLanguage: string) {
   return callWithRetry(async () => {
     const ai = getAI();
+    if (!ai) throw new Error("AI API Key not configured");
     const response = await ai.models.generateContent({
-      model: "gemini-3-flash-preview",
+      model: "gemini-2.5-flash",
       contents: `Look up "${word}" and translate it to ${targetLanguage}. Provide IPA, definition, 3 examples, and 5 synonyms.`,
       config: {
         systemInstruction: "You are a high-speed, accurate dictionary. Provide precise translations and linguistic data in JSON format.",
@@ -50,7 +57,7 @@ export async function lookupWord(word: string, targetLanguage: string) {
             definition: { type: Type.STRING },
             examples: {
               type: Type.ARRAY,
-              items: { 
+              items: {
                 type: Type.OBJECT,
                 properties: {
                   original: { type: Type.STRING },
@@ -76,9 +83,10 @@ export async function lookupWord(word: string, targetLanguage: string) {
 export async function getQuizQuestions(targetLanguage: string, category: string, level: string, count: number) {
   return callWithRetry(async () => {
     const ai = getAI();
-    
+    if (!ai) throw new Error("AI API Key not configured");
+
     let difficultyContext = "";
-    switch(level.toLowerCase()) {
+    switch (level.toLowerCase()) {
       case 'basic': difficultyContext = "Simple, common everyday words."; break;
       case 'intermediate': difficultyContext = "Standard conversational words."; break;
       case 'advance': difficultyContext = "Complex academic or professional vocabulary."; break;
@@ -86,7 +94,7 @@ export async function getQuizQuestions(targetLanguage: string, category: string,
     }
 
     const response = await ai.models.generateContent({
-      model: "gemini-3-flash-preview",
+      model: "gemini-2.5-flash",
       contents: `Generate ${count} vocabulary question pairs for a language quiz.
       Target Language: ${targetLanguage}
       Category: ${category}
@@ -116,8 +124,9 @@ export async function getQuizQuestions(targetLanguage: string, category: string,
 export async function transcribeAudio(base64Audio: string, mimeType: string) {
   return callWithRetry(async () => {
     const ai = getAI();
+    if (!ai) throw new Error("AI API Key not configured");
     const response = await ai.models.generateContent({
-      model: "gemini-3-flash-preview",
+      model: "gemini-2.5-flash",
       contents: {
         parts: [
           {
@@ -141,6 +150,7 @@ export async function transcribeAudio(base64Audio: string, mimeType: string) {
 export async function generateSpeech(text: string) {
   return callWithRetry(async () => {
     const ai = getAI();
+    if (!ai) throw new Error("AI API Key not configured");
     const response = await ai.models.generateContent({
       model: "gemini-2.5-flash-preview-tts",
       contents: [{ parts: [{ text: `Pronounce clearly: ${text}` }] }],
