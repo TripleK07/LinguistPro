@@ -2,11 +2,12 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
 import { lookupWord, generateSpeech, decodeBase64, decodeAudioData } from '../lib/gemini';
-import { DictionaryEntry, DashboardView, Favorite } from '../types';
+import { DictionaryEntry, DashboardView, Favorite, HistoryEntry } from '../types';
 import { SearchSection } from './dashboard/SearchSection';
 import { QuizSection } from './dashboard/QuizSection';
 import { FavoritesSection } from './dashboard/FavoritesSection';
 import { SupportSection } from './dashboard/SupportSection';
+import { HistorySection } from './dashboard/HistorySection';
 
 interface DashboardProps {
   session: any;
@@ -39,13 +40,19 @@ const Dashboard: React.FC<DashboardProps> = ({ session, isGuest, onExitGuest, is
   const [favSearchQuery, setFavSearchQuery] = useState('');
   const [persuasionType, setPersuasionType] = useState<'favorites' | 'quiz' | null>(null);
 
+  // History state
+  const [history, setHistory] = useState<HistoryEntry[]>([]);
+  const [loadingHistory, setLoadingHistory] = useState(false);
+  const [selectedHistory, setSelectedHistory] = useState<HistoryEntry | null>(null);
+  const [historySearchQuery, setHistorySearchQuery] = useState('');
+
   // Search local state
   const [searchWord, setSearchWord] = useState('');
   const [targetLang, setTargetLang] = useState('Myanmar');
   const [loadingSearch, setLoadingSearch] = useState(false);
   const [searchResult, setSearchResult] = useState<DictionaryEntry | null>(null);
   const [playingAudio, setPlayingAudio] = useState(false);
-  
+
   const audioContextRef = useRef<AudioContext | null>(null);
   const user = session?.user || { id: 'guest', email: 'Guest User' };
 
@@ -59,14 +66,41 @@ const Dashboard: React.FC<DashboardProps> = ({ session, isGuest, onExitGuest, is
     } catch (err) { console.error(err); } finally { setLoadingFavorites(false); }
   }, [user.id, isGuest]);
 
+  const fetchHistory = useCallback(async () => {
+    if (isGuest) {
+      const localData = localStorage.getItem('linguistpro_history');
+      if (localData) {
+        setHistory(JSON.parse(localData));
+      }
+      return;
+    }
+    if (!supabase) return;
+    setLoadingHistory(true);
+    try {
+      const { data, error } = await supabase
+        .from('histories')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false })
+        .limit(30);
+      if (error) throw error;
+      if (data) setHistory(data);
+    } catch (err) {
+      console.error("Error fetching history:", err);
+    } finally {
+      setLoadingHistory(false);
+    }
+  }, [user.id, isGuest]);
+
   useEffect(() => {
     fetchFavorites();
-  }, [fetchFavorites]);
+    fetchHistory();
+  }, [fetchFavorites, fetchHistory]);
 
   const toggleFavorite = async (entry: DictionaryEntry) => {
-    if (isGuest) { 
+    if (isGuest) {
       setPersuasionType('favorites');
-      return; 
+      return;
     }
     if (!supabase) return;
     const existing = favorites.find(f => f.word.toLowerCase() === entry.word.toLowerCase());
@@ -81,16 +115,84 @@ const Dashboard: React.FC<DashboardProps> = ({ session, isGuest, onExitGuest, is
     } catch (err) { console.error(err); }
   };
 
+  const saveToHistory = async (word: string, lang: string, entry: DictionaryEntry) => {
+    const newEntry: Partial<HistoryEntry> = {
+      user_id: user.id,
+      word: word.toLowerCase(),
+      target_lang: lang,
+      entry,
+      created_at: new Date().toISOString()
+    };
+
+    if (isGuest) {
+      const updatedHistory = [
+        { ...newEntry, id: Math.random().toString(36).substr(2, 9) } as HistoryEntry,
+        ...history.filter(h => h.word !== word.toLowerCase())
+      ].slice(0, 30);
+      setHistory(updatedHistory);
+      localStorage.setItem('linguistpro_history', JSON.stringify(updatedHistory));
+      return;
+    }
+
+    if (!supabase) return;
+
+    try {
+      // First, delete if already exists to keep it at the top
+      await supabase.from('histories').delete().eq('user_id', user.id).eq('word', word.toLowerCase());
+
+      const { data } = await supabase.from('histories').insert([newEntry]).select().single();
+
+      if (data) {
+        const updatedHistory = [data, ...history.filter(h => h.word !== word.toLowerCase())].slice(0, 30);
+        setHistory(updatedHistory);
+
+        // Cleanup old entries (more than 30) - simple approach: delete anything older than the 30th item
+        const { data: allHistory } = await supabase.from('histories').select('id').eq('user_id', user.id).order('created_at', { ascending: false });
+        if (allHistory && allHistory.length > 30) {
+          const idsToDelete = allHistory.slice(30).map(h => h.id);
+          await supabase.from('histories').delete().in('id', idsToDelete);
+        }
+      }
+    } catch (err) {
+      console.error("Error saving history:", err);
+    }
+  };
+
+  const deleteHistory = async (id: string | null, deleteAll = false) => {
+    if (isGuest) {
+      let updatedHistory = deleteAll ? [] : history.filter(h => h.id !== id);
+      setHistory(updatedHistory);
+      localStorage.setItem('linguistpro_history', JSON.stringify(updatedHistory));
+      return;
+    }
+
+    if (!supabase) return;
+
+    try {
+      if (deleteAll) {
+        await supabase.from('histories').delete().eq('user_id', user.id);
+        setHistory([]);
+      } else if (id) {
+        await supabase.from('histories').delete().eq('id', id);
+        setHistory(prev => prev.filter(h => h.id !== id));
+      }
+    } catch (err) {
+      console.error("Error deleting history:", err);
+    }
+  };
+
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!searchWord.trim()) return;
     setLoadingSearch(true);
     try {
       const data = await lookupWord(searchWord, targetLang);
-      setSearchResult({ ...data, target_lang: targetLang });
-    } catch (err) { 
-      console.error(err); 
-    } finally { 
+      const entry = { ...data, target_lang: targetLang };
+      setSearchResult(entry);
+      saveToHistory(data.word, targetLang, entry);
+    } catch (err) {
+      console.error(err);
+    } finally {
       setLoadingSearch(false);
     }
   };
@@ -112,9 +214,9 @@ const Dashboard: React.FC<DashboardProps> = ({ session, isGuest, onExitGuest, is
       source.connect(ctx.destination);
       source.onended = () => setPlayingAudio(false);
       source.start();
-    } catch (err) { 
+    } catch (err) {
       console.error("Audio playback error:", err);
-      setPlayingAudio(false); 
+      setPlayingAudio(false);
     }
   };
 
@@ -132,9 +234,9 @@ const Dashboard: React.FC<DashboardProps> = ({ session, isGuest, onExitGuest, is
     return (
       <div className="space-y-4 animate-in fade-in slide-in-from-bottom-2 duration-300">
         {showBackButton && (
-          <button onClick={() => setSelectedFavorite(null)} className="flex items-center gap-2 text-slate-500 hover:text-indigo-600 font-semibold text-sm transition-colors mb-2">
+          <button onClick={() => { setSelectedFavorite(null); setSelectedHistory(null); }} className="flex items-center gap-2 text-slate-500 hover:text-indigo-600 font-semibold text-sm transition-colors mb-2">
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M15 19l-7-7 7-7" /></svg>
-            Back to Favorite
+            Back to {selectedFavorite ? 'Favorite' : 'History'}
           </button>
         )}
         <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-200">
@@ -143,9 +245,9 @@ const Dashboard: React.FC<DashboardProps> = ({ session, isGuest, onExitGuest, is
               <div className="flex items-center gap-4 mb-1">
                 <h2 className="text-4xl font-bold text-slate-800 capitalize">{data.word}</h2>
                 <div className="flex gap-2">
-                  <button 
-                    onClick={() => playPronunciation(data.word)} 
-                    disabled={playingAudio} 
+                  <button
+                    onClick={() => playPronunciation(data.word)}
+                    disabled={playingAudio}
                     className={`w-10 h-10 rounded-full flex items-center justify-center transition-all ${playingAudio ? 'bg-indigo-100 text-indigo-600' : 'bg-indigo-50 text-indigo-600 hover:bg-indigo-100 active:scale-95'}`}
                   >
                     {playingAudio ? (
@@ -207,6 +309,7 @@ const Dashboard: React.FC<DashboardProps> = ({ session, isGuest, onExitGuest, is
 
   const navItems = [
     { id: 'search', label: 'Search', icon: <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg> },
+    { id: 'history', label: 'History', icon: <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg> },
     { id: 'favorites', label: 'Favorite', icon: <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" /></svg> },
     { id: 'quiz', label: 'Quiz', icon: <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg> },
     { id: 'support', label: 'Donate', icon: <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg> }
@@ -218,22 +321,23 @@ const Dashboard: React.FC<DashboardProps> = ({ session, isGuest, onExitGuest, is
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between h-14">
             <div className="flex items-center gap-6">
-              <div className="flex items-center gap-2 cursor-pointer transition-transform active:scale-95" onClick={() => { setCurrentTab('search'); setSelectedFavorite(null); }}>
+              <div className="flex items-center gap-2 cursor-pointer transition-transform active:scale-95" onClick={() => { setCurrentTab('search'); setSelectedFavorite(null); setSelectedHistory(null); }}>
                 <img src="https://cdn-icons-png.flaticon.com/512/3898/3898082.png" alt="Logo" className="w-7 h-7" />
                 <span className="font-black text-slate-900 text-lg tracking-tighter hidden xs:block">Linguist<span className="text-indigo-600">Pro</span></span>
               </div>
               <div className="flex h-full">
                 {navItems.filter(item => !(isGuest && item.id === 'support')).map((item) => (
-                  <button 
-                    key={item.id} 
-                    onClick={() => { 
+                  <button
+                    key={item.id}
+                    onClick={() => {
                       if (isGuest && (item.id === 'favorites' || item.id === 'quiz')) {
                         setPersuasionType(item.id === 'favorites' ? 'favorites' : 'quiz');
                         return;
                       }
-                      setCurrentTab(item.id as any); 
-                      setSelectedFavorite(null); 
-                    }} 
+                      setCurrentTab(item.id as any);
+                      setSelectedFavorite(null);
+                      setSelectedHistory(null);
+                    }}
                     className={`relative flex items-center px-4 border-b-2 transition-all font-semibold text-sm capitalize ${currentTab === item.id ? 'border-indigo-600 text-indigo-600' : 'border-transparent text-slate-500 hover:bg-slate-50'}`}
                   >
                     <span className="mr-2 hidden sm:block">{item.icon}</span>
@@ -251,27 +355,26 @@ const Dashboard: React.FC<DashboardProps> = ({ session, isGuest, onExitGuest, is
               </div>
             </div>
             <div className="flex items-center gap-4">
-               {isGuest ? (
-                 <button 
-                   onClick={() => onExitGuest?.()}
-                   className="hidden sm:flex items-center gap-2 bg-indigo-600 text-white px-5 py-2 rounded-full text-xs font-black shadow-lg shadow-indigo-100 transition-all active:scale-95 hover:bg-indigo-700"
-                 >
-                   Sign Up
-                 </button>
-               ) : (
-                 <div className="hidden sm:flex items-center gap-3 bg-slate-50 px-3 py-1.5 rounded-2xl border border-slate-100">
-                    <span className="text-[10px] font-bold text-slate-400 max-w-[150px] truncate">{user.email}</span>
-                    <div className="w-px h-3 bg-slate-200"></div>
-                    <button 
-                      onClick={handleSignOut}
-                      className="p-1 text-slate-400 hover:text-red-500 transition-colors group"
-                      title="Sign Out"
-                    >
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" /></svg>
-                    </button>
-                 </div>
-               )}
-               <img className="h-8 w-8 rounded-full border border-slate-200 shadow-sm ring-2 ring-indigo-50" src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${user.id}`} alt="User" />
+              {isGuest ? (
+                <button
+                  onClick={() => onExitGuest?.()}
+                  className="hidden sm:flex items-center gap-2 bg-indigo-600 text-white px-5 py-2 rounded-full text-xs font-black shadow-lg shadow-indigo-100 transition-all active:scale-95 hover:bg-indigo-700"
+                >
+                  Sign Up
+                </button>
+              ) : (
+                <div className="hidden sm:flex items-center gap-3 bg-slate-50 px-3 py-1.5 rounded-2xl border border-slate-100">
+                  <span className="text-[10px] font-bold text-slate-400 max-w-[150px] truncate">{user.email}</span>
+                  <div className="w-px h-3 bg-slate-200"></div>
+                  <button
+                    onClick={handleSignOut}
+                    className="p-1 text-slate-400 hover:text-red-500 transition-colors group"
+                    title="Sign Out"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" /></svg>
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -279,7 +382,7 @@ const Dashboard: React.FC<DashboardProps> = ({ session, isGuest, onExitGuest, is
 
       <main className="flex-grow max-w-4xl mx-auto w-full py-8 px-4">
         {currentTab === 'search' && (
-          <SearchSection 
+          <SearchSection
             searchWord={searchWord}
             setSearchWord={setSearchWord}
             targetLang={targetLang}
@@ -295,8 +398,21 @@ const Dashboard: React.FC<DashboardProps> = ({ session, isGuest, onExitGuest, is
 
         {currentTab === 'quiz' && <QuizSection />}
 
+        {currentTab === 'history' && (
+          <HistorySection
+            history={history}
+            loading={loadingHistory}
+            searchQuery={historySearchQuery}
+            setSearchQuery={setHistorySearchQuery}
+            onSelectHistory={setSelectedHistory}
+            onDeleteHistory={deleteHistory}
+            getFlagUrl={getFlagUrl}
+            languages={LANGUAGES}
+          />
+        )}
+
         {currentTab === 'favorites' && (
-          <FavoritesSection 
+          <FavoritesSection
             favorites={favorites}
             loading={loadingFavorites}
             searchQuery={favSearchQuery}
@@ -312,10 +428,21 @@ const Dashboard: React.FC<DashboardProps> = ({ session, isGuest, onExitGuest, is
         {selectedFavorite && currentTab === 'favorites' && (
           <div className="fixed inset-0 z-[100] bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-300">
             <div className="w-full max-w-4xl max-h-[90vh] overflow-y-auto bg-[#F8FAFC] rounded-3xl p-6 relative shadow-2xl scrollbar-hide">
-               <button onClick={() => setSelectedFavorite(null)} className="absolute top-4 right-4 p-2 text-slate-400 hover:text-slate-600 bg-white rounded-full shadow-md z-10 transition-transform active:scale-90">
-                 <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M6 18L18 6M6 6l12 12" /></svg>
-               </button>
-               {renderResult(selectedFavorite.entry, true)}
+              <button onClick={() => setSelectedFavorite(null)} className="absolute top-4 right-4 p-2 text-slate-400 hover:text-slate-600 bg-white rounded-full shadow-md z-10 transition-transform active:scale-90">
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M6 18L18 6M6 6l12 12" /></svg>
+              </button>
+              {renderResult(selectedFavorite.entry, true)}
+            </div>
+          </div>
+        )}
+
+        {selectedHistory && currentTab === 'history' && (
+          <div className="fixed inset-0 z-[100] bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-300">
+            <div className="w-full max-w-4xl max-h-[90vh] overflow-y-auto bg-[#F8FAFC] rounded-3xl p-6 relative shadow-2xl scrollbar-hide">
+              <button onClick={() => setSelectedHistory(null)} className="absolute top-4 right-4 p-2 text-slate-400 hover:text-slate-600 bg-white rounded-full shadow-md z-10 transition-transform active:scale-90">
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M6 18L18 6M6 6l12 12" /></svg>
+              </button>
+              {renderResult(selectedHistory.entry, true)}
             </div>
           </div>
         )}
@@ -324,41 +451,41 @@ const Dashboard: React.FC<DashboardProps> = ({ session, isGuest, onExitGuest, is
         {persuasionType && (
           <div className="fixed inset-0 z-[110] bg-slate-900/60 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in duration-300">
             <div className="w-full max-w-md bg-white rounded-[40px] shadow-2xl p-10 text-center animate-in zoom-in-95 duration-500">
-               <div className="w-20 h-20 bg-indigo-50 text-indigo-600 rounded-3xl flex items-center justify-center mx-auto mb-8 shadow-inner">
-                 {persuasionType === 'favorites' ? (
-                   <svg className="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" /></svg>
-                 ) : (
-                   <svg className="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" /></svg>
-                 )}
-               </div>
-               
-               <h2 className="text-3xl font-black text-slate-900 mb-4 tracking-tight">
-                 {persuasionType === 'favorites' ? 'Personal Word Bank' : 'Premium Daily Quiz'}
-               </h2>
-               
-               <p className="text-slate-500 mb-10 leading-relaxed font-medium">
-                 {persuasionType === 'favorites' 
-                   ? 'Save difficult words and build your own custom vocabulary library. Sign up to start building your personal linguist library.'
-                   : 'Challenge yourself with interactive vocabulary games to accelerate your learning. Join our community to access daily quizzes.'}
-               </p>
-               
-               <div className="space-y-4">
-                 <button 
-                   onClick={() => onExitGuest?.()}
-                   className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-black py-5 rounded-3xl shadow-xl shadow-indigo-100 transition-all active:scale-95"
-                 >
-                   Sign up to unlock
-                 </button>
-                 <div className="flex flex-col items-center gap-1">
-                   <p className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em]">It's free and takes 30 seconds.</p>
-                 </div>
-                 <button 
-                   onClick={() => setPersuasionType(null)}
-                   className="w-full text-slate-400 font-bold text-sm py-4 hover:text-slate-600 transition-colors"
-                 >
-                   Maybe Later
-                 </button>
-               </div>
+              <div className="w-20 h-20 bg-indigo-50 text-indigo-600 rounded-3xl flex items-center justify-center mx-auto mb-8 shadow-inner">
+                {persuasionType === 'favorites' ? (
+                  <svg className="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" /></svg>
+                ) : (
+                  <svg className="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" /></svg>
+                )}
+              </div>
+
+              <h2 className="text-3xl font-black text-slate-900 mb-4 tracking-tight">
+                {persuasionType === 'favorites' ? 'Personal Word Bank' : 'Premium Daily Quiz'}
+              </h2>
+
+              <p className="text-slate-500 mb-10 leading-relaxed font-medium">
+                {persuasionType === 'favorites'
+                  ? 'Save difficult words and build your own custom vocabulary library. Sign up to start building your personal linguist library.'
+                  : 'Challenge yourself with interactive vocabulary games to accelerate your learning. Join our community to access daily quizzes.'}
+              </p>
+
+              <div className="space-y-4">
+                <button
+                  onClick={() => onExitGuest?.()}
+                  className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-black py-5 rounded-3xl shadow-xl shadow-indigo-100 transition-all active:scale-95"
+                >
+                  Sign up to unlock
+                </button>
+                <div className="flex flex-col items-center gap-1">
+                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em]">It's free and takes 30 seconds.</p>
+                </div>
+                <button
+                  onClick={() => setPersuasionType(null)}
+                  className="w-full text-slate-400 font-bold text-sm py-4 hover:text-slate-600 transition-colors"
+                >
+                  Maybe Later
+                </button>
+              </div>
             </div>
           </div>
         )}

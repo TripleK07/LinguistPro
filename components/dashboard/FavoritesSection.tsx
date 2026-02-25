@@ -12,32 +12,32 @@ interface FavoritesSectionProps {
   languages: any[];
 }
 
-export const FavoritesSection: React.FC<FavoritesSectionProps> = ({ 
-  favorites, loading, searchQuery, setSearchQuery, onSelectFavorite, getFlagUrl, languages 
+export const FavoritesSection: React.FC<FavoritesSectionProps> = ({
+  favorites, loading, searchQuery, setSearchQuery, onSelectFavorite, getFlagUrl, languages
 }) => {
-  const filtered = favorites.filter(f => 
-    f.word.toLowerCase().includes(searchQuery.toLowerCase()) || 
+  const filtered = favorites.filter(f =>
+    f.word.toLowerCase().includes(searchQuery.toLowerCase()) ||
     f.entry.translation.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   return (
     <div className="space-y-6 animate-in fade-in duration-500">
-      <header className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
-        <h1 className="text-2xl font-bold text-slate-800">Your Personal Favorites</h1>
-        <div className="mt-4 relative">
-          <input 
-            value={searchQuery} 
-            onChange={(e) => setSearchQuery(e.target.value)} 
-            type="text" 
-            placeholder="Search saved words..." 
-            className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:border-indigo-600 outline-none transition-all" 
+      <header className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm">
+        <h1 className="text-2xl font-bold text-slate-800 mb-4">Your Personal Favorites</h1>
+        <div className="relative">
+          <input
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            type="text"
+            placeholder="Search saved words..."
+            className="w-full h-[54px] pl-11 pr-4 rounded-2xl border border-slate-200 bg-slate-50 focus:bg-white focus:border-indigo-600 outline-none transition-all shadow-sm text-lg"
           />
-          <svg className="w-5 h-5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+          <svg className="w-5 h-5 text-slate-400 absolute left-4 top-1/2 -translate-y-1/2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
           </svg>
         </div>
       </header>
-      
+
       <div className="grid grid-cols-1 gap-3">
         {loading ? (
           <div className="space-y-3">{[1, 2, 3].map(i => <div key={i} className="h-20 bg-white rounded-xl border border-slate-100 animate-pulse"></div>)}</div>
